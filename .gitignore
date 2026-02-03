@@ -1,0 +1,108 @@
+# Virtual Environment
+pyenv.cfg
+Lib/
+Scripts/
+Include/
+pyvenv.cfg
+
+# Python
+*.py[cod]
+*$py.class
+*.so
+__pycache__/
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Data files (biasanya file besar)
+*.csv
+*.json
+*.parquet
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.db
+*.sqlite
+*.xlsx
+*.xls
+
+# Jika ada folder data
+data/raw/*
+data/processed/*
+data/external/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/external/.gitkeep
+
+# Models (file trained model biasanya besar)
+models/*.pkl
+models/*.h5
+models/*.pt
+models/*.pth
+models/*.joblib
+*.model
+*.weights
+
+# Logs
+*.log
+logs/
+*.out
+
+# OS Files
+.DS_Store              # Mac
+Thumbs.db              # Windows
+desktop.ini            # Windows
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+config.local.py
+
+# Results & Outputs
+results/*.png
+results/*.jpg
+results/*.jpeg
+results/*.pdf
+results/*.svg
+outputs/
+
+# Cache
+.cache/
+*.cache
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
