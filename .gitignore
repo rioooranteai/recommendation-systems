@@ -6,7 +6,7 @@ env/
 ENV/
 .venv/
 Lib/
-Scripts/
+/Scripts/
 Include/
 share/
 pyvenv.cfg
