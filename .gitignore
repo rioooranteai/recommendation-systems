@@ -1,28 +1,79 @@
-# Virtual Environment
-pyenv.cfg
+# ==============================================================================
+# VIRTUAL ENVIRONMENT
+# ==============================================================================
+venv/
+env/
+ENV/
+.venv/
 Lib/
 Scripts/
 Include/
 share/
 pyvenv.cfg
 
-# Python
+# ==============================================================================
+# PYTHON
+# ==============================================================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
 *.py[cod]
 *$py.class
 *.so
-__pycache__/
-*.egg-info/
-dist/
-build/
-*.egg
 
-# Jupyter Notebook
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ==============================================================================
+# JUPYTER NOTEBOOK
+# ==============================================================================
 .ipynb_checkpoints/
 *.ipynb_checkpoints
+*.ipynb  # Uncomment jika tidak mau commit notebooks
 
-# Data files (biasanya file besar)
+# ==============================================================================
+# DATA FILES (Large Files)
+# ==============================================================================
+# Dataset folders - ignore all downloaded/processed data
+data/raw/**
+data/processed/**
+data/external/**
+data/fashion-mini/**
+data/*/images/**/*.jpg
+data/*/images/**/*.jpeg
+data/*/images/**/*.png
+Semantic Image Fashion Recommender/data/**
+
+# Keep folder structure
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/external/.gitkeep
+
+# Data file formats (kecuali sample/config)
 *.csv
+!sample*.csv
+!config*.csv
 *.json
+!package.json
+!tsconfig.json
+!config*.json
 *.parquet
 *.pkl
 *.pickle
@@ -30,62 +81,150 @@ build/
 *.hdf5
 *.db
 *.sqlite
+*.sqlite3
 *.xlsx
 *.xls
+*.jpg
 
-# Jika ada folder data
-data/raw/*
-data/processed/*
-data/external/*
-!data/raw/.gitkeep
-!data/processed/.gitkeep
-!data/external/.gitkeep
+# Compressed files
+*.zip
+*.tar.gz
+*.tar
+*.rar
+*.7z
 
-# Models (file trained model biasanya besar)
-models/*.pkl
-models/*.h5
-models/*.pt
-models/*.pth
-models/*.joblib
+# ==============================================================================
+# MODEL FILES (Large trained models)
+# ==============================================================================
+models/**/*.pkl
+models/**/*.h5
+models/**/*.pt
+models/**/*.pth
+models/**/*.joblib
+models/**/*.onnx
+models/**/*.trt
+models/**/*.engine
+models/**/*.pb
 *.model
 *.weights
+*.ckpt
+*.safetensors
 
-# Logs
+# Keep folder structure
+!models/.gitkeep
+!models/README.md
+
+# ==============================================================================
+# LOGS & OUTPUTS
+# ==============================================================================
 *.log
 logs/
 *.out
+*.err
 
-# OS Files
-.DS_Store              # Mac
-Thumbs.db              # Windows
-desktop.ini            # Windows
-*.swp
-*.swo
+# Results & outputs
+results/**/*.png
+results/**/*.jpg
+results/**/*.jpeg
+results/**/*.pdf
+results/**/*.svg
+outputs/**
+runs/
+wandb/
+
+# Keep folder structure
+!results/.gitkeep
+!outputs/.gitkeep
+
+# ==============================================================================
+# OPERATING SYSTEM
+# ==============================================================================
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Linux
 *~
+.directory
+.Trash-*
 
-# IDE
+# ==============================================================================
+# IDE & EDITORS
+# ==============================================================================
+# VS Code
 .vscode/
+*.code-workspace
+
+# PyCharm
 .idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
 *.sublime-project
 *.sublime-workspace
 
-# Environment variables
+# Vim
+*.swp
+*.swo
+*~
+.*.swp
+.*.swo
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# Spyder
+.spyderproject
+.spyproject
+
+# ==============================================================================
+# ENVIRONMENT & SECRETS
+# ==============================================================================
 .env
 .env.local
 .env.*.local
+.env.development
+.env.test
+.env.production
 config.local.py
+secrets.py
+.secrets/
 
-# Results & Outputs
-results/*.png
-results/*.jpg
-results/*.jpeg
-results/*.pdf
-results/*.svg
-outputs/
+# Kaggle credentials
+.kaggle/
+kaggle.json
 
-# Cache
+# ==============================================================================
+# CACHE & TEMPORARY FILES
+# ==============================================================================
 .cache/
 *.cache
+__pypackages__/
+
+# pytest
+.pytest_cache/
+.tox/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
 
 # Coverage reports
 htmlcov/
@@ -93,17 +232,62 @@ htmlcov/
 .coverage.*
 coverage.xml
 *.cover
-
-# pytest
-.pytest_cache/
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
+.hypothesis/
 
 # Temporary files
 *.tmp
 *.temp
 temp/
 tmp/
+.temp/
+
+# ==============================================================================
+# CLOUD & DEPLOYMENT
+# ==============================================================================
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Kubernetes
+*.kubeconfig
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# ==============================================================================
+# DOCUMENTATION
+# ==============================================================================
+# Sphinx documentation
+docs/_build/
+docs/.doctrees/
+
+# MkDocs
+site/
+
+# ==============================================================================
+# MISCELLANEOUS
+# ==============================================================================
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+
+# Lock files (keep for reproducibility, uncomment to ignore)
+# poetry.lock
+# Pipfile.lock
+# package-lock.json
+
+# System files
+.fuse_hidden*
+*.lnk
+
+# ==============================================================================
+# PROJECT SPECIFIC
+# ==============================================================================
+# Add your project-specific ignores here
+# Example:
+# experiments/
+# notebooks/drafts/

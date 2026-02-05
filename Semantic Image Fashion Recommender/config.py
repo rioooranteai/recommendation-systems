@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 class Config:
     # Project Paths
     BASE_DIR = Path(__file__).resolve().parent
@@ -17,7 +16,7 @@ class Config:
     SIGLIP_TENSORRT_DIR = MODELS_DIR / "siglip_tensorrt"
 
     # Model Settings
-    SIGLIP_MODEL_NAME = "google/siglip-base-patch16-224"
+    SIGLIP_MODEL_NAME = "google/siglip2-base-patch16-256"
     USE_TENSORRT = os.getenv('USE_TENSORRT', "false").lower() == 'true'
     DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
     EMBEDDING_DIM = 512
