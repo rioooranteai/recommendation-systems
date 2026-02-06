@@ -12,7 +12,7 @@ class PineconeService:
         self.pc = PineconeGRPC(api_key=Config.PINECONE_API_KEY)
         self.index = self.pc.Index(Config.PINECONE_INDEX_NAME)
 
-    def upsert(self, vectors: List[tuple], namespace: str = ""):
+    def upsert(self, vectors: List[tuple], namespace: str = Config.PINECONE_NAMESPACE):
         try:
             response = self.index.upsert(
                 vectors=vectors,
@@ -30,7 +30,7 @@ class PineconeService:
         vector: List[tuple],
         top_k: int = Config.TOP_K,
         filter: Optional[Dict] = None,
-        namespace: str = ""):
+        namespace: str = Config.PINECONE_NAMESPACE):
 
         try:
 
@@ -48,7 +48,7 @@ class PineconeService:
             logging.error(f"Query Failed: {e}")
 
 
-    def delete_all(self, namespace: str = ""):
+    def delete_all(self, namespace: str = Config.PINECONE_NAMESPACE):
         self.index.delete(delete_all=True, namespace=namespace)
 
 
@@ -72,7 +72,7 @@ class PineconeAsyncService:
             vector: List[float],
             top_k: int = Config.TOP_K,
             filter: Optional[Dict] = None,
-            namespace: str = ""
+            namespace: str = Config.PINECONE_NAMESPACE
     ):
         try:
             results = await self.index.query(
@@ -87,7 +87,7 @@ class PineconeAsyncService:
             logger.error(f"Async query failed: {e}")
             raise
 
-    async def upsert(self, vectors: List[tuple], namespace: str = ""):
+    async def upsert(self, vectors: List[tuple], namespace: str = Config.PINECONE_NAMESPACE):
         try:
             response = await self.index.upsert(
                 vectors=vectors,

@@ -19,16 +19,17 @@ class Config:
     SIGLIP_MODEL_NAME = "google/siglip2-base-patch16-256"
     USE_TENSORRT = os.getenv('USE_TENSORRT', "false").lower() == 'true'
     DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-    EMBEDDING_DIM = 512
+    EMBEDDING_DIM = 768
 
     # Pinecone Settings
     PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
     PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT", "us-east-1")
     PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "semantic-image-fashion-search")
+    PINECONE_NAMESPACE = "Fashion Product"
 
     # Processing Settings
     TOP_K = 10
-    BATCH_SIZE = 32
+    BATCH_SIZE = 24
     IMAGE_SIZE = 224
 
     # Vector DB config

@@ -1,12 +1,14 @@
-import warnings
-import transformers
-import torch
-import numpy as np
 import logging
+import warnings
 from typing import List, Union
+
+import numpy as np
+import torch
+import transformers
 from PIL import Image
 from config import Config
 from transformers import AutoModel, AutoProcessor
+
 from .base_model import BaseEmbeddingModel
 
 # Suppress warnings
@@ -18,17 +20,14 @@ logging.getLogger("huggingface_hub").setLevel(logging.WARNING)
 
 class SigLIPPytorch(BaseEmbeddingModel):
     def __init__(self):
-
+        self.device = Config.DEVICE
         self.model = AutoModel.from_pretrained(
             Config.SIGLIP_MODEL_NAME,
-            device_map='auto'
-        ).eval()
-
+        ).to(Config.DEVICE).eval()
         self.processor = AutoProcessor.from_pretrained(
             Config.SIGLIP_MODEL_NAME,
         )
 
-        self.device = Config.DEVICE
     def _normalize_embeddings(self, embeddings: torch.Tensor) -> torch.Tensor:
 
         return embeddings / embeddings.norm(p=2, dim=-1, keepdim=True)
@@ -47,6 +46,9 @@ class SigLIPPytorch(BaseEmbeddingModel):
         # Handle single image
         if isinstance(images, Image.Image):
             images = [images]
+            single_image = True
+        else:
+            single_image = False
 
         all_embeddings = []
 
@@ -77,7 +79,11 @@ class SigLIPPytorch(BaseEmbeddingModel):
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        return result.numpy()
+        result_np = result.numpy()
+        if single_image and result_np.ndim == 2:
+            result_np = result_np.flatten()
+
+        return result_np
 
     @torch.no_grad()
     def encode_text(
@@ -89,8 +95,10 @@ class SigLIPPytorch(BaseEmbeddingModel):
         # Handle single text
         if isinstance(texts, str):
             texts = [texts]
+            single_text = True
+        else:
+            single_text = False
 
-        # Process texts
         inputs = self.processor(
             text=texts,
             return_tensors='pt',
@@ -98,7 +106,6 @@ class SigLIPPytorch(BaseEmbeddingModel):
             truncation=True
         ).to(self.device)
 
-        # Get text features
         outputs = self.model.get_text_features(**inputs)
 
         if hasattr(outputs, 'pooler_output'):
@@ -106,19 +113,19 @@ class SigLIPPytorch(BaseEmbeddingModel):
         else:
             embeddings = outputs
 
-        # Normalize if requested
         if normalize:
             embeddings = self._normalize_embeddings(embeddings)
 
-        # Move to CPU
         result = embeddings.cpu()
 
-        # Clear GPU cache
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        # Return as numpy array
-        return result.numpy()
+        result_np = result.numpy()
+        if single_text and result_np.ndim == 2:
+            result_np = result_np.flatten()
+
+        return result_np
 
     def encode_image(self, image: Image.Image, normalize: bool = True) -> np.ndarray:
         embeddings = self.encode_images([image], normalize=normalize)

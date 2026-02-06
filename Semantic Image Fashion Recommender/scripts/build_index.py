@@ -39,7 +39,7 @@ def build_text_doc(row) -> str:
         parts.append(str(row['display name']).strip())
 
     if pd.notna(row.get('category')):
-        parts.append(f'Category: {row["catagory"]}')
+        parts.append(f'Category: {row["category"]}')
 
     if pd.notna(row.get('description')):
         desc = str(row['description']).strip()[:300]
@@ -63,11 +63,11 @@ def build_index(
     embedding_service = EmbeddingService()
     pinecone_service = PineconeService()
 
-    expexted_dim = embedding_service.get_embedding_dim()
+    expected_dim = embedding_service.get_embedding_dim()
 
     vectors_batch = []
-    success_count = []
-    error_count = []
+    success_count = 0
+    error_count = 0
 
     for idx, row in tqdm(df.iterrows(), total=len(df), desc='Building Index'):
         try:
@@ -80,7 +80,7 @@ def build_index(
             try:
                 image = Image.open(image_path).convert('RGB')
             except Exception as e:
-                logger.warning(f"Failed to load image {row['filename']}: {e}")
+                logger.warning(f"Failed to load image {row['image']}: {e}")
                 error_count += 1
                 continue
 
@@ -89,7 +89,7 @@ def build_index(
             img_values = to_1d_list(img_emb)
 
             # validate
-            validate_vector(img_values, expexted_dim)
+            validate_vector(img_values, expected_dim)
 
             # Product ID (dari filename tanpa extension)
             product_id = str(row['image'].split(".")[0])
@@ -119,7 +119,7 @@ def build_index(
                     txt_emb = embedding_service.encode_text(text_doc)
                     txt_values = to_1d_list(txt_emb)
 
-                    validate_vector(txt_values, expexted_dim)
+                    validate_vector(txt_values, expected_dim)
 
                     txt_metadata = {
                         'product_id': product_id,
@@ -169,6 +169,6 @@ if __name__ == "__main__":
         data_path="../data/fashion-mini/data.csv",
         image_dir="../data/fashion-mini/data",
         batch_size=100,
-        max_items=10,
+        max_items=None,
         include_text=True
     )
