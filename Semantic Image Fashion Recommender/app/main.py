@@ -2,22 +2,21 @@ import logging
 from contextlib import asynccontextmanager
 
 import uvicorn
+from app import dependencies
+from app.api import routes
+from app.core.search_engine import SearchEngine
+from config import Config
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from services.embedding_service import EmbeddingService
 from services.pinecone_service import PineconeService
-from app.core.search_engine import SearchEngine
-from app.api import routes
-from app.schemas import models
-from app import dependencies
-from config import Config
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -83,6 +82,7 @@ async def lifespan(app: FastAPI):
     logger.info("✓ Goodbye!")
     logger.info("=" * 60)
 
+
 app = FastAPI(
     title="Semantif Fashion Search API",
     description="""
@@ -115,6 +115,7 @@ app.add_middleware(
 
 app.include_router(routes.router, prefix='/api', tags=['Search'])
 
+
 @app.get("/", tags=['Root'])
 def root():
     return {
@@ -138,6 +139,7 @@ def root():
 def ping():
     return {"status": "ok"}
 
+
 if __name__ == "__main__":
     uvicorn.run(
         "app.main:app",
@@ -146,5 +148,3 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
-
-
