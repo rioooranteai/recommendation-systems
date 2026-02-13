@@ -5,7 +5,6 @@ from typing import List, Union
 import numpy as np
 import torch
 import transformers
-from PIL import Image
 from config import Config
 from transformers import AutoModel, AutoTokenizer
 
@@ -15,6 +14,7 @@ warnings.filterwarnings('ignore')
 transformers.logging.set_verbosity_error()
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("huggingface_hub").setLevel(logging.WARNING)
+
 
 class Qwen3Pytorch(BaseEmbeddingModel):
     def __init__(self):
