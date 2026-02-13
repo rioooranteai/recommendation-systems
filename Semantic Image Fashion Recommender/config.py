@@ -15,11 +15,16 @@ class Config:
     SIGLIP_PYTORCH_DIR = MODELS_DIR / "siglip_base"
     SIGLIP_TENSORRT_DIR = MODELS_DIR / "siglip_tensorrt"
 
-    # Model Settings
+    # Image Model Settings
     SIGLIP_MODEL_NAME = "google/siglip2-base-patch16-256"
     USE_TENSORRT = os.getenv('USE_TENSORRT', "false").lower() == 'true'
     DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
     EMBEDDING_DIM = 768
+
+    # Text Model Settings
+    TEXT_MODEL_NAME = "Qwen/Qwen3-Embedding-8B"
+    MAX_TOKEN_LENGTH = 512
+
 
     # Pinecone Settings
     PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")

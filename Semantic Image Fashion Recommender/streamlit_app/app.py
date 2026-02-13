@@ -1,26 +1,29 @@
-"""
-Streamlit UI for Semantic Fashion Search - E-commerce Style
-Complete with quick filters, sorting, and modern design
-"""
-import streamlit as st
-from PIL import Image
-import time
 import sys
+import time
 from pathlib import Path
+import os
+import streamlit as st
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-# Import dengan path relatif (tanpa streamlit_app prefix)
 from api_client import APIClient
 from streamlit_config import StreamlitConfig
 from utils import (
     resize_image,
     validate_image,
-    format_score,
-    get_result_color
+    format_score
 )
+
+IMAGE_BASE_PATH = project_root / "data" / "fashion-mini" / "data"
+
+if not IMAGE_BASE_PATH.exists():
+    alt_path = Path("Semantic Image Fashion Recommender/data/fashion-mini/data")
+    if alt_path.exists():
+        IMAGE_BASE_PATH = alt_path
+    else:
+        st.warning(f"Image directory not found: {IMAGE_BASE_PATH}")
 
 # Page configuration
 st.set_page_config(
@@ -30,89 +33,168 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS - E-commerce Style
+# ========== IMPROVED CUSTOM CSS ==========
 st.markdown("""
 <style>
-    /* Hide Streamlit branding */
+    /* ============================================
+       GLOBAL & RESET
+    ============================================ */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    * {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 
-    /* Main container */
     .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-        max-width: 1400px;
+        padding-top: 3rem;
+        padding-bottom: 3rem;
+        max-width: 1600px;
     }
 
-    /* Header */
+    /* ============================================
+       HEADER SECTION - Modern Gradient
+    ============================================ */
     .main-header {
-        font-size: 2.8rem;
-        font-weight: 700;
+        font-size: 3.5rem;
+        font-weight: 800;
         text-align: center;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1d1d1f 0%, #4a4a4f 50%, #1d1d1f 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 0.5rem;
-        letter-spacing: -1px;
+        letter-spacing: -2px;
+        line-height: 1.2;
     }
 
     .subtitle {
         text-align: center;
-        color: #6c757d;
-        font-size: 1.1rem;
-        margin-bottom: 2.5rem;
+        color: #6b7280;
+        font-size: 1.15rem;
+        margin-bottom: 3rem;
         font-weight: 400;
+        letter-spacing: 0.3px;
     }
 
-    /* Search Container */
+    /* ============================================
+       SEARCH CONTAINER - Apple Style Card
+    ============================================ */
     .search-container {
-        background: white;
-        border-radius: 15px;
-        padding: 2rem;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.07);
-        margin-bottom: 2rem;
-        border: 1px solid #e9ecef;
+        background: #ffffff;
+        border-radius: 24px;
+        padding: 2.5rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        margin-bottom: 2.5rem;
+        border: 1px solid #f0f0f0;
+        transition: all 0.3s ease;
     }
 
-    /* Quick Filters */
+    .search-container:hover {
+        box-shadow: 0 15px 40px rgba(0,0,0,0.12);
+    }
+
+    /* ============================================
+       TABS - Rounded & Modern
+    ============================================ */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: #f6f6f6;
+        border-radius: 16px;
+        padding: 6px;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        border-radius: 12px;
+        padding: 0 24px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #6b7280;
+        background-color: transparent;
+        border: none;
+        transition: all 0.2s ease;
+    }
+
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: #e5e7eb;
+        color: #1d1d1f;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: #1d1d1f !important;
+        color: white !important;
+        box-shadow: 0 4px 12px rgba(29, 29, 31, 0.15);
+    }
+
+    /* ============================================
+       FILTERS - Compact & Clean
+    ============================================ */
     .filters-container {
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 1.2rem;
-        margin-bottom: 2rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 20px;
+        padding: 1.8rem;
+        margin-bottom: 2.5rem;
+        border: 1px solid #e5e7eb;
     }
 
     .filter-label {
-        font-size: 0.95rem;
-        font-weight: 600;
-        color: #495057;
-        margin-bottom: 0.5rem;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1d1d1f;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 
-    /* Product Grid */
+    /* ============================================
+       PRODUCT GRID - Enhanced Cards
+    ============================================ */
     .product-card {
         background: white;
-        border: 1px solid #e9ecef;
-        border-radius: 12px;
-        padding: 1rem;
+        border: 1px solid #f0f0f0;
+        border-radius: 16px;
+        padding: 1.2rem;
         margin-bottom: 1.5rem;
-        transition: all 0.3s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         height: 100%;
         cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .product-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(29, 29, 31, 0.02) 0%, rgba(29, 29, 31, 0.05) 100%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+        border-radius: 16px;
     }
 
     .product-card:hover {
         transform: translateY(-8px);
-        box-shadow: 0 12px 24px rgba(102, 126, 234, 0.25);
-        border-color: #667eea;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+        border-color: #1d1d1f;
+    }
+
+    .product-card:hover::before {
+        opacity: 1;
     }
 
     .product-image-container {
         position: relative;
         width: 100%;
         padding-bottom: 100%;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 8px;
+        background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
+        border-radius: 12px;
         overflow: hidden;
         margin-bottom: 1rem;
         display: flex;
@@ -125,137 +207,352 @@ st.markdown("""
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        font-size: 3rem;
-        color: #adb5bd;
+        font-size: 3.5rem;
+        opacity: 0.3;
+        filter: grayscale(20%);
     }
 
+    /* ============================================
+       SCORE BADGES - Premium Look
+    ============================================ */
     .score-badge {
         position: absolute;
-        top: 10px;
-        right: 10px;
-        padding: 0.4rem 0.8rem;
+        top: 12px;
+        right: 12px;
+        padding: 0.5rem 1rem;
         border-radius: 20px;
         font-weight: 700;
         font-size: 0.85rem;
         z-index: 10;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        backdrop-filter: blur(10px);
+        letter-spacing: 0.5px;
     }
 
     .score-high {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1d1d1f 0%, #2d2d2f 100%);
         color: white;
     }
 
     .score-medium {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
         color: white;
     }
 
     .score-low {
-        background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%);
+        background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
         color: white;
     }
 
     .product-title {
-        font-weight: 600;
-        font-size: 1rem;
-        color: #212529;
-        margin-bottom: 0.3rem;
+        font-weight: 700;
+        font-size: 1.05rem;
+        color: #1d1d1f;
+        margin-bottom: 0.4rem;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        letter-spacing: -0.3px;
     }
 
     .product-category {
-        color: #6c757d;
+        color: #6b7280;
         font-size: 0.9rem;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.6rem;
+        font-weight: 500;
     }
 
     .product-meta {
         font-size: 0.85rem;
-        color: #868e96;
+        color: #9ca3af;
         display: flex;
-        gap: 1rem;
+        gap: 0.75rem;
         flex-wrap: wrap;
     }
 
     .product-meta span {
-        background: #f8f9fa;
-        padding: 0.2rem 0.6rem;
-        border-radius: 12px;
+        background: #f6f6f6;
+        padding: 0.3rem 0.75rem;
+        border-radius: 16px;
+        font-weight: 600;
+        transition: all 0.2s ease;
     }
 
-    /* Results Header */
+    .product-meta span:hover {
+        background: #e5e7eb;
+        transform: scale(1.05);
+    }
+
+    /* ============================================
+       PRODUCT IMAGES - Polished
+    ============================================ */
+    .product-card img {
+        border-radius: 12px;
+        width: 100%;
+        height: auto;
+        object-fit: cover;
+        aspect-ratio: 1 / 1;
+        transition: transform 0.3s ease;
+    }
+
+    .product-card:hover img {
+        transform: scale(1.05);
+    }
+
+    .product-card > div > img {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+
+    /* ============================================
+       RESULTS HEADER - Stats Bar
+    ============================================ */
     .results-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.5rem;
-        padding: 1rem 0;
-        border-bottom: 2px solid #e9ecef;
+        margin-bottom: 2rem;
+        padding: 1.5rem 0;
+        border-bottom: 2px solid #f0f0f0;
     }
 
     .results-count {
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: #212529;
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #1d1d1f;
+        letter-spacing: -0.5px;
     }
 
     .results-meta {
-        color: #6c757d;
+        color: #6b7280;
         font-size: 0.95rem;
         display: flex;
-        gap: 1.5rem;
+        gap: 2rem;
         align-items: center;
+        font-weight: 500;
     }
 
-    /* Empty State */
+    /* ============================================
+       EMPTY STATE - Elegant
+    ============================================ */
     .empty-state {
         text-align: center;
-        padding: 5rem 2rem;
-        color: #6c757d;
+        padding: 6rem 2rem;
+        color: #6b7280;
+        background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
+        border-radius: 24px;
+        margin: 2rem 0;
     }
 
     .empty-state-icon {
-        font-size: 5rem;
-        margin-bottom: 1.5rem;
-        opacity: 0.5;
+        font-size: 6rem;
+        margin-bottom: 2rem;
+        opacity: 0.4;
+        filter: grayscale(30%);
     }
 
     .empty-state h3 {
-        font-size: 1.5rem;
-        color: #495057;
-        margin-bottom: 0.5rem;
+        font-size: 1.8rem;
+        color: #1d1d1f;
+        margin-bottom: 0.8rem;
+        font-weight: 700;
+        letter-spacing: -0.5px;
     }
 
     .empty-state p {
-        font-size: 1rem;
-        color: #868e96;
+        font-size: 1.05rem;
+        color: #6b7280;
+        line-height: 1.6;
     }
 
-    /* Stats Badge */
+    /* ============================================
+       BADGES & PILLS
+    ============================================ */
     .stats-badge {
         display: inline-block;
-        background: #e7f3ff;
-        color: #0066cc;
-        padding: 0.3rem 0.8rem;
-        border-radius: 15px;
+        background: linear-gradient(135deg, #1d1d1f 0%, #2d2d2f 100%);
+        color: white;
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
         font-size: 0.85rem;
-        font-weight: 600;
-        margin-left: 0.5rem;
+        font-weight: 700;
+        margin-left: 0.75rem;
+        letter-spacing: 0.5px;
+        box-shadow: 0 4px 12px rgba(29, 29, 31, 0.2);
     }
 
-    /* Filter Active State */
+    /* ============================================
+       BUTTONS - Premium Dark Style
+    ============================================ */
+    .stButton > button {
+        background: #1d1d1f !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        padding: 0.75rem 1.5rem !important;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+        transition: all 0.2s ease !important;
+        letter-spacing: 0.3px !important;
+    }
+
+    .stButton > button:hover {
+        background: #2d2d2f !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 20px rgba(29, 29, 31, 0.25) !important;
+    }
+
+    .stButton > button:active {
+        transform: translateY(0) !important;
+    }
+
+    /* Secondary Buttons */
     .stButton > button[data-testid="baseButton-secondary"] {
         background: white !important;
-        border: 1px solid #dee2e6 !important;
-        color: #495057 !important;
+        border: 1.5px solid #e5e7eb !important;
+        color: #1d1d1f !important;
     }
 
     .stButton > button[data-testid="baseButton-secondary"]:hover {
-        border-color: #667eea !important;
-        color: #667eea !important;
+        background: #f6f6f6 !important;
+        border-color: #1d1d1f !important;
+    }
+
+    /* ============================================
+       INPUTS - Rounded & Clean
+    ============================================ */
+    .stTextInput > div > div > input,
+    .stTextArea > div > div > textarea,
+    .stSelectbox > div > div > div {
+        border-radius: 12px !important;
+        border: 1.5px solid #e5e7eb !important;
+        padding: 0.75rem 1rem !important;
+        font-size: 0.95rem !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .stTextInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus {
+        border-color: #1d1d1f !important;
+        box-shadow: 0 0 0 3px rgba(29, 29, 31, 0.1) !important;
+    }
+
+    /* ============================================
+       FILE UPLOADER - Enhanced
+    ============================================ */
+    .stFileUploader {
+        border-radius: 16px;
+        border: 2px dashed #e5e7eb;
+        padding: 2rem;
+        background: #fafafa;
+        transition: all 0.3s ease;
+    }
+
+    .stFileUploader:hover {
+        border-color: #1d1d1f;
+        background: white;
+    }
+
+    /* ============================================
+       METRICS - Card Style
+    ============================================ */
+    [data-testid="stMetric"] {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 16px;
+        border: 1px solid #f0f0f0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    [data-testid="stMetricLabel"] {
+        font-size: 0.9rem;
+        color: #6b7280;
+        font-weight: 600;
+    }
+
+    [data-testid="stMetricValue"] {
+        font-size: 1.8rem;
+        color: #1d1d1f;
+        font-weight: 800;
+    }
+
+    /* ============================================
+       ALERTS - Rounded
+    ============================================ */
+    .stAlert {
+        border-radius: 16px !important;
+        border: none !important;
+        padding: 1.2rem 1.5rem !important;
+    }
+
+    /* ============================================
+       SPINNERS - Modern
+    ============================================ */
+    .stSpinner > div {
+        border-color: #1d1d1f !important;
+        border-right-color: transparent !important;
+    }
+
+    /* ============================================
+       SLIDER - Custom Style
+    ============================================ */
+    .stSlider > div > div > div {
+        background: #1d1d1f !important;
+    }
+
+    /* ============================================
+       EXPANDER - Cleaner
+    ============================================ */
+    .streamlit-expanderHeader {
+        font-weight: 600 !important;
+        color: #1d1d1f !important;
+        border-radius: 12px !important;
+    }
+
+    /* ============================================
+       FOOTER - Minimal
+    ============================================ */
+    .footer-section {
+        text-align: center;
+        color: #9ca3af;
+        font-size: 0.9rem;
+        padding: 3rem 0;
+        border-top: 1px solid #f0f0f0;
+        margin-top: 4rem;
+    }
+
+    .footer-section strong {
+        color: #1d1d1f;
+        font-weight: 700;
+    }
+
+    /* ============================================
+       RESPONSIVE
+    ============================================ */
+    @media (max-width: 768px) {
+        .main-header {
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            font-size: 1rem;
+        }
+
+        .search-container {
+            padding: 1.5rem;
+            border-radius: 20px;
+        }
+
+        .results-count {
+            font-size: 1.4rem;
+        }
+
+        .empty-state {
+            padding: 4rem 1.5rem;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -316,59 +613,109 @@ def apply_filters(results):
 
 
 def render_product_card(item, col):
-    """Render a single product card"""
+    """Render a single product card with actual image"""
     with col:
         score = item.get('score', 0)
         score_class = "score-high" if score >= 0.8 else "score-medium" if score >= 0.6 else "score-low"
 
-        # Determine emoji based on category
-        category_emoji = {
-            'Tshirts': '👕',
-            'Shirts': '👔',
-            'Jeans': '👖',
-            'Trousers': '👔',
-            'Shoes': '👟',
-            'Casual Shoes': '👟',
-            'Formal Shoes': '👞',
-            'Sports Shoes': '👟',
-            'Watches': '⌚',
-            'Bags': '👜',
-            'Sunglasses': '🕶️',
-        }
-
         category = item.get('category', 'Unknown')
-        emoji = category_emoji.get(category, '👗')
+        product_id = item.get('product_id', 'N/A')
 
-        # Product card HTML
-        card_html = f"""
-        <div class="product-card">
-            <div class="product-image-container">
-                <div class="product-image-placeholder">{emoji}</div>
-                <span class="score-badge {score_class}">{format_score(score)}</span>
-            </div>
-            <div class="product-title">{item.get('product_id', 'N/A')}</div>
-            <div class="product-category">📦 {category}</div>
-            <div class="product-meta">
-        """
+        # ========== TRY TO LOAD IMAGE ==========
+        image_filename = f"{product_id}.jpg"
+        image_path = IMAGE_BASE_PATH / image_filename
+
+        # Start card HTML
+        st.markdown('<div class="product-card">', unsafe_allow_html=True)
+
+        # ========== IMAGE SECTION ==========
+        if image_path.exists():
+            try:
+                from PIL import Image
+                img = Image.open(image_path)
+
+                # Create container with relative positioning
+                st.markdown(
+                    '<div style="position: relative; margin-bottom: 1rem;">',
+                    unsafe_allow_html=True
+                )
+
+                # Display image
+                st.image(img, use_container_width=True)
+
+                # Score badge overlay
+                st.markdown(
+                    f'<div class="score-badge {score_class}" '
+                    f'style="position: absolute; top: 10px; right: 10px; z-index: 10;">'
+                    f'{format_score(score)}'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            except Exception as e:
+                # Fallback to emoji
+                category_emoji = {
+                    'Tshirts': '👕', 'Shirts': '👔', 'Jeans': '👖',
+                    'Trousers': '👔', 'Shoes': '👟', 'Watches': '⌚',
+                    'Bags': '👜', 'Sunglasses': '🕶️',
+                }
+                emoji = category_emoji.get(category, '👗')
+
+                st.markdown(
+                    f'<div class="product-image-container">'
+                    f'<div class="product-image-placeholder">{emoji}</div>'
+                    f'<span class="score-badge {score_class}">{format_score(score)}</span>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+        else:
+            # Image not found - use emoji
+            category_emoji = {
+                'Tshirts': '👕', 'Shirts': '👔', 'Jeans': '👖',
+                'Trousers': '👔', 'Shoes': '👟', 'Watches': '⌚',
+                'Bags': '👜', 'Sunglasses': '🕶️',
+            }
+            emoji = category_emoji.get(category, '👗')
+
+            st.markdown(
+                f'<div class="product-image-container">'
+                f'<div class="product-image-placeholder">{emoji}</div>'
+                f'<span class="score-badge {score_class}">{format_score(score)}</span>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+        # ========== PRODUCT INFO ==========
+        st.markdown(
+            f'<div class="product-title" title="{product_id}">{product_id}</div>',
+            unsafe_allow_html=True
+        )
+
+        st.markdown(
+            f'<div class="product-category">📦 {category}</div>',
+            unsafe_allow_html=True
+        )
+
+        # Meta badges
+        meta_html = '<div class="product-meta">'
 
         if item.get('image_score') is not None:
-            card_html += f"<span>🖼️ {format_score(item['image_score'])}</span>"
+            meta_html += f'<span>🖼️ {format_score(item["image_score"])}</span>'
 
         if item.get('text_score') is not None:
-            card_html += f"<span>📝 {format_score(item['text_score'])}</span>"
+            meta_html += f'<span>📝 {format_score(item["text_score"])}</span>'
 
-        card_html += """
-            </div>
-        </div>
-        """
+        meta_html += '</div></div>'  # Close product-meta and product-card
 
-        st.markdown(card_html, unsafe_allow_html=True)
+        st.markdown(meta_html, unsafe_allow_html=True)
 
 
 def render_quick_filters(results):
     """Render quick filter buttons"""
     st.markdown('<div class="filters-container">', unsafe_allow_html=True)
-    st.markdown('<div class="filter-label">🔍 Quick Filters</div>', unsafe_allow_html=True)
+    st.markdown('<div class="filter-label">🎯 Quick Filters</div>', unsafe_allow_html=True)
 
     col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -384,7 +731,7 @@ def render_quick_filters(results):
 
     with col1:
         if st.button(
-                f"⭐ Top Matches ({high_score_count})",
+                f"⭐ Top ({high_score_count})",
                 use_container_width=True,
                 key="filter_top"
         ):
@@ -396,7 +743,7 @@ def render_quick_filters(results):
 
     with col2:
         if st.button(
-                f"🎯 Good Matches ({medium_score_count})",
+                f"🎯 Good ({medium_score_count})",
                 use_container_width=True,
                 key="filter_medium"
         ):
@@ -409,7 +756,7 @@ def render_quick_filters(results):
     with col3:
         # Category filter dropdown
         selected_category = st.selectbox(
-            "Filter by Category",
+            "Category",
             ["All Categories"] + categories,
             key="filter_category_select",
             label_visibility="collapsed"
@@ -423,19 +770,19 @@ def render_quick_filters(results):
     with col4:
         # Sort options
         sort_option = st.selectbox(
-            "Sort by",
-            ["Score (High to Low)", "Category (A-Z)"],
+            "Sort",
+            ["Score ↓", "Category A-Z"],
             key="sort_select",
             label_visibility="collapsed"
         )
 
-        if sort_option == "Score (High to Low)":
+        if sort_option == "Score ↓":
             st.session_state.active_filters['sort_by'] = 'score'
         else:
             st.session_state.active_filters['sort_by'] = 'category'
 
     with col5:
-        if st.button("🔄 Reset Filters", use_container_width=True, key="reset_filters"):
+        if st.button("🔄 Reset", use_container_width=True, key="reset_filters"):
             st.session_state.active_filters = {
                 'score_threshold': None,
                 'category': None,
@@ -451,12 +798,12 @@ def render_quick_filters(results):
         active_filter_tags.append(f"Score ≥ {int(threshold * 100)}%")
 
     if st.session_state.active_filters['category']:
-        active_filter_tags.append(f"Category: {st.session_state.active_filters['category']}")
+        active_filter_tags.append(f"{st.session_state.active_filters['category']}")
 
     if active_filter_tags:
         st.markdown(
-            f"<div style='margin-top: 1rem; color: #6c757d; font-size: 0.9rem;'>"
-            f"Active filters: {' • '.join(active_filter_tags)}</div>",
+            f"<div style='margin-top: 1rem; color: #6b7280; font-size: 0.9rem; font-weight: 600;'>"
+            f"🔖 Active: {' • '.join(active_filter_tags)}</div>",
             unsafe_allow_html=True
         )
 
@@ -469,7 +816,7 @@ def main():
     # Header
     st.markdown('<h1 class="main-header">🛍️ Fashion Finder</h1>', unsafe_allow_html=True)
     st.markdown(
-        '<p class="subtitle">Discover similar fashion items with AI-powered visual search</p>',
+        '<p class="subtitle">AI-powered visual search for fashion items</p>',
         unsafe_allow_html=True
     )
 
@@ -481,7 +828,7 @@ def main():
         "🖼️ Image Search",
         "📝 Text Search",
         "🔄 Hybrid Search",
-        "📊 Stats"
+        "📊 Statistics"
     ])
 
     uploaded_image = None
@@ -490,11 +837,13 @@ def main():
 
     # Tab 1: Image Search
     with tab1:
+        st.markdown("### Upload Fashion Image")
+
         col_upload, col_settings = st.columns([2, 1])
 
         with col_upload:
             uploaded_file = st.file_uploader(
-                "Upload a fashion item image",
+                "Drop your image here",
                 type=StreamlitConfig.ALLOWED_EXTENSIONS,
                 key="image_search_uploader",
                 help="Drag and drop or click to upload (JPG, PNG)"
@@ -505,15 +854,15 @@ def main():
                 if uploaded_image:
                     # Resize for display
                     display_img = resize_image(uploaded_image.copy(), (400, 400))
-                    st.image(display_img, caption="Query Image")
+                    st.image(display_img, caption="Query Image", use_container_width=True)
                 else:
                     st.error("❌ Invalid image file")
 
         with col_settings:
-            st.markdown("##### Settings")
+            st.markdown("#### ⚙️ Settings")
 
             top_k_img = st.slider(
-                "Number of results",
+                "Results",
                 min_value=1,
                 max_value=50,
                 value=12,
@@ -522,16 +871,16 @@ def main():
 
             categories = api_client.get_categories()
             category_img = st.selectbox(
-                "Category filter",
+                "Category",
                 ["All"] + categories,
                 key="cat_img"
             )
             category_img = None if category_img == "All" else category_img
 
-            st.markdown("")  # Spacing
+            st.markdown("")
 
             if st.button(
-                    "🔍 Search Similar Items",
+                    "🔍 Search",
                     key="search_img",
                     type="primary",
                     use_container_width=True
@@ -546,40 +895,43 @@ def main():
 
     # Tab 2: Text Search
     with tab2:
+        st.markdown("### Describe What You're Looking For")
+
         col_text, col_settings2 = st.columns([2, 1])
 
         with col_text:
             text_query = st.text_area(
-                "What are you looking for?",
+                "Search query",
                 placeholder="e.g., red striped t-shirt, blue denim jeans, leather jacket...",
                 key="text_query_input",
-                height=100
+                height=120,
+                label_visibility="collapsed"
             )
 
             # Example queries
-            st.markdown("**💡 Example queries:**")
+            st.markdown("**💡 Try these:**")
             example_col1, example_col2, example_col3 = st.columns(3)
 
             with example_col1:
-                if st.button("Red striped shirt", key="ex1"):
+                if st.button("Red striped shirt", key="ex1", use_container_width=True):
                     st.session_state.text_query_input = "red striped shirt"
                     st.rerun()
 
             with example_col2:
-                if st.button("Blue denim jeans", key="ex2"):
+                if st.button("Blue denim jeans", key="ex2", use_container_width=True):
                     st.session_state.text_query_input = "blue denim jeans"
                     st.rerun()
 
             with example_col3:
-                if st.button("Black leather shoes", key="ex3"):
+                if st.button("Leather shoes", key="ex3", use_container_width=True):
                     st.session_state.text_query_input = "black leather shoes"
                     st.rerun()
 
         with col_settings2:
-            st.markdown("##### Settings")
+            st.markdown("#### ⚙️ Settings")
 
             top_k_txt = st.slider(
-                "Number of results",
+                "Results",
                 min_value=1,
                 max_value=50,
                 value=12,
@@ -588,16 +940,16 @@ def main():
 
             categories = api_client.get_categories()
             category_txt = st.selectbox(
-                "Category filter",
+                "Category",
                 ["All"] + categories,
                 key="cat_txt"
             )
             category_txt = None if category_txt == "All" else category_txt
 
-            st.markdown("")  # Spacing
+            st.markdown("")
 
             if st.button(
-                    "🔍 Search Products",
+                    "🔍 Search",
                     key="search_txt",
                     type="primary",
                     use_container_width=True
@@ -612,12 +964,14 @@ def main():
 
     # Tab 3: Hybrid Search
     with tab3:
+        st.markdown("### Combine Image + Text Search")
+
         col_hybrid1, col_hybrid2 = st.columns([2, 1])
 
         with col_hybrid1:
             st.markdown("##### 1️⃣ Upload Image")
             uploaded_file_hybrid = st.file_uploader(
-                "Choose an image",
+                "Image",
                 type=StreamlitConfig.ALLOWED_EXTENSIONS,
                 key="hybrid_uploader",
                 label_visibility="collapsed"
@@ -631,17 +985,17 @@ def main():
 
             st.markdown("##### 2️⃣ Add Text Preference")
             text_query_hybrid = st.text_input(
-                "Describe preferences",
+                "Text",
                 placeholder="e.g., red color, striped pattern, casual style...",
                 key="hybrid_text",
                 label_visibility="collapsed"
             )
 
         with col_hybrid2:
-            st.markdown("##### Settings")
+            st.markdown("#### ⚙️ Settings")
 
             top_k_hyb = st.slider(
-                "Number of results",
+                "Results",
                 min_value=1,
                 max_value=50,
                 value=12,
@@ -650,41 +1004,34 @@ def main():
 
             categories = api_client.get_categories()
             category_hyb = st.selectbox(
-                "Category filter",
+                "Category",
                 ["All"] + categories,
                 key="cat_hyb"
             )
             category_hyb = None if category_hyb == "All" else category_hyb
 
-            with st.expander("⚙️ Advanced Settings"):
+            with st.expander("⚙️ Advanced"):
                 image_weight = st.slider(
                     "Image Weight",
-                    min_value=0.0,
-                    max_value=1.0,
-                    value=0.7,
-                    step=0.1,
-                    help="Higher = more visual similarity"
+                    0.0, 1.0, 0.7, 0.1,
+                    help="Visual similarity"
                 )
 
                 text_weight = st.slider(
                     "Text Weight",
-                    min_value=0.0,
-                    max_value=1.0,
-                    value=0.3,
-                    step=0.1,
-                    help="Higher = more text preference"
+                    0.0, 1.0, 0.3, 0.1,
+                    help="Text preference"
                 )
 
                 use_rerank = st.checkbox(
                     "Enable Reranking",
-                    value=True,
-                    help="Use text to refine results"
+                    value=True
                 )
 
-            st.markdown("")  # Spacing
+            st.markdown("")
 
             if st.button(
-                    "🔍 Hybrid Search",
+                    "🔍 Search",
                     key="search_hyb",
                     type="primary",
                     use_container_width=True
@@ -697,23 +1044,23 @@ def main():
                     top_k = top_k_hyb
                     category = category_hyb
                 else:
-                    st.error("Please upload image AND enter text!")
+                    st.error("Need both image and text!")
 
     # Tab 4: Stats
     with tab4:
-        st.markdown("### 📊 System Statistics")
+        st.markdown("### 📊 System Status")
 
         col_stat1, col_stat2 = st.columns(2)
 
         with col_stat1:
-            if st.button("🔄 Refresh Stats", key="refresh_stats"):
+            if st.button("🔄 Refresh", key="refresh_stats"):
                 st.cache_resource.clear()
 
         # API Health
         health = api_client.check_health()
 
         if health.get("status") == "healthy":
-            st.success("✅ API is healthy and running")
+            st.success("✅ System Online")
 
             col1, col2, col3 = st.columns(3)
 
@@ -726,9 +1073,8 @@ def main():
             with col3:
                 st.metric("Embedding Dim", health.get("embedding_dim", "N/A"))
 
-            # Index Stats
             st.markdown("---")
-            st.markdown("#### Vector Index Statistics")
+            st.markdown("#### Vector Index")
 
             stats = api_client.get_stats()
 
@@ -744,7 +1090,7 @@ def main():
                 if stats.get("namespaces"):
                     st.markdown("**Namespaces:**")
                     for ns, info in stats["namespaces"].items():
-                        st.write(f"- `{ns}`: {info.get('vector_count', 0):,} vectors")
+                        st.write(f"• `{ns}`: {info.get('vector_count', 0):,} vectors")
 
             # Search History
             if st.session_state.search_history:
@@ -759,7 +1105,7 @@ def main():
                         f"({hist['time']:.2f}s)"
                     )
         else:
-            st.error("❌ API is unavailable")
+            st.error("❌ API Unavailable")
             if "error" in health:
                 st.error(health["error"])
 
@@ -767,7 +1113,7 @@ def main():
 
     # ========== PERFORM SEARCH ==========
     if search_triggered:
-        with st.spinner("🔍 Searching for similar items..."):
+        with st.spinner("🔍 Searching..."):
             start_time = time.time()
 
             try:
@@ -818,8 +1164,7 @@ def main():
                     })
 
                     st.success(
-                        f"✅ Found {len(results.get('results', []))} items "
-                        f"in {search_time:.2f}s"
+                        f"✅ Found {len(results.get('results', []))} items in {search_time:.2f}s"
                     )
                 else:
                     st.error(f"❌ {results.get('error', 'Search failed')}")
@@ -832,7 +1177,7 @@ def main():
         st.markdown("---")
         render_quick_filters(st.session_state.search_results)
 
-    # ========== RESULTS SECTION (BOTTOM) ==========
+    # ========== RESULTS SECTION ==========
     st.markdown("---")
 
     if st.session_state.search_results:
@@ -857,7 +1202,7 @@ def main():
                     )
                 else:
                     st.markdown(
-                        f'<div class="results-count">🛍️ {filtered} Products Found</div>',
+                        f'<div class="results-count">🛍️ {filtered} Products</div>',
                         unsafe_allow_html=True
                     )
 
@@ -870,7 +1215,7 @@ def main():
                     unsafe_allow_html=True
                 )
 
-            st.markdown("")  # Spacing
+            st.markdown("")
 
             # Product Grid (4 columns)
             num_cols = 4
@@ -888,8 +1233,8 @@ def main():
                 """
                 <div class="empty-state">
                     <div class="empty-state-icon">🔍</div>
-                    <h3>No items match your filters</h3>
-                    <p>Try adjusting or resetting the filters above</p>
+                    <h3>No Matches Found</h3>
+                    <p>Try adjusting your filters or search criteria</p>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -901,26 +1246,22 @@ def main():
             """
             <div class="empty-state">
                 <div class="empty-state-icon">👆</div>
-                <h3>Start Your Search</h3>
+                <h3>Start Searching</h3>
                 <p>Upload an image or enter a description to find similar fashion items</p>
-                <p style="font-size: 0.9rem; margin-top: 1rem;">
-                    Choose a search mode from the tabs above
-                </p>
             </div>
             """,
             unsafe_allow_html=True
         )
 
     # Footer
-    st.markdown("---")
     st.markdown(
         """
-        <div style="text-align: center; color: #adb5bd; font-size: 0.9rem; padding: 2rem 0;">
+        <div class="footer-section">
             <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">
-                Powered by <strong>SigLIP</strong> embeddings + <strong>Pinecone</strong> vector database
+                Powered by <strong>SigLIP</strong> + <strong>Pinecone</strong>
             </p>
-            <p style="font-size: 0.85rem; color: #ced4da;">
-                🚀 Semantic Image Search | 🎯 AI-Powered Recommendations | ⚡ Lightning Fast
+            <p style="font-size: 0.85rem; color: #9ca3af;">
+                🚀 Semantic Search • 🎯 AI Recommendations • ⚡ Real-time Results
             </p>
         </div>
         """,

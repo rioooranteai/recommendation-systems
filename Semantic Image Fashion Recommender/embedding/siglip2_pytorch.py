@@ -11,7 +11,6 @@ from transformers import AutoModel, AutoProcessor
 
 from .base_model import BaseEmbeddingModel
 
-# Suppress warnings
 warnings.filterwarnings('ignore')
 transformers.logging.set_verbosity_error()
 logging.getLogger("httpx").setLevel(logging.WARNING)

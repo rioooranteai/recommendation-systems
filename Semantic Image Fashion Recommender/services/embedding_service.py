@@ -1,6 +1,6 @@
 from config import Config
 from embedding.base_model import BaseEmbeddingModel
-from embedding.siglip_pytorch import SigLIPPytorch
+from embedding.siglip2_pytorch import SigLIPPytorch
 
 
 class EmbeddingService:
