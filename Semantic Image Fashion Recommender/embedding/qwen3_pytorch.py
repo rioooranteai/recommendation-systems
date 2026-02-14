@@ -8,7 +8,7 @@ import transformers
 from config import Config
 from transformers import AutoModel, AutoTokenizer
 
-from .base_model import BaseEmbeddingModel
+from embedding.base_model import BaseEmbeddingModel
 
 warnings.filterwarnings('ignore')
 transformers.logging.set_verbosity_error()
@@ -59,3 +59,17 @@ class Qwen3Pytorch(BaseEmbeddingModel):
         embeddings = embeddings.cpu().numpy()
 
         return embeddings
+
+    def encode_images(self, images, batch_size: int = 32) -> torch.Tensor:
+        """
+        Qwen3 adalah text model, tidak support image encoding.
+        Method ini hanya untuk memenuhi interface BaseEmbeddingModel.
+        """
+        raise NotImplementedError(
+            "Qwen3 is a text-only model and does not support image encoding. "
+            "Use SigLIPPytorch for image encoding instead."
+        )
+
+    def get_embedding_dim(self) -> int:
+        """Return embedding dimension of the Qwen3 model"""
+        return self.model.config.hidden_size

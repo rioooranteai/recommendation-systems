@@ -43,3 +43,9 @@ class EmbeddingService:
         """Get current model types"""
         image_type = "TensorRT" if Config.USE_TENSORRT else "PyTorch"
         return f"Image: {image_type}, Text: Qwen3-PyTorch"
+
+test_qwen = ["My Name Is Mario"]
+
+service_test = EmbeddingService()
+
+print(service_test.encode_text(test_qwen))
