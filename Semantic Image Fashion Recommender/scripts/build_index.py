@@ -33,19 +33,28 @@ def to_1d_list(arr):
 
 
 def build_text_doc(row) -> str:
+    """Build natural language document for BGE-M3"""
     parts = []
 
-    if pd.notna(row.get('display name')):
-        parts.append(str(row['display name']).strip())
+    product_name = str(row.get('display name', '')).strip()
+    category = str(row.get('category', '')).strip()
+    description = str(row.get('description', '')).strip()
 
-    if pd.notna(row.get('category')):
-        parts.append(f'Category: {row["category"]}')
+    if product_name:
+        parts.append(f"This is a {product_name}")
 
-    if pd.notna(row.get('description')):
-        desc = str(row['description']).strip()[:300]
-        parts.append(desc)
+    if category and category.lower() != 'unknown':
+        parts.append(f"in the {category} category")
 
-    return ". ".join(parts)
+    if description:
+        desc_clean = description[:500].strip()
+        parts.append(f"It is {desc_clean}")
+
+    result = ". ".join(parts)
+    if result and not result.endswith('.'):
+        result += '.'
+
+    return result
 
 
 def build_index(
@@ -63,10 +72,17 @@ def build_index(
     embedding_service = EmbeddingService()
     pinecone_service = PineconeService()
 
-    expected_dim = embedding_service.get_embedding_dim()
+    text_dim = embedding_service.get_embedding_dim()
+    image_dim = embedding_service.get_image_embedding_dim()
 
-    vectors_batch = []
-    success_count = 0
+    logger.info(f"Text dimension: {text_dim}, Image dimension: {image_dim}")
+    logger.info(f"Processing {len(df)} products")
+
+    image_vectors_batch = []
+    text_vectors_batch = []
+
+    image_success_count = 0
+    text_success_count = 0
     error_count = 0
 
     for idx, row in tqdm(df.iterrows(), total=len(df), desc='Building Index'):
@@ -84,82 +100,98 @@ def build_index(
                 error_count += 1
                 continue
 
-            # Encode image
+            # Encode IMAGE
             img_emb = embedding_service.encode_images(image)
             img_values = to_1d_list(img_emb)
+            validate_vector(img_values, image_dim)
 
-            # validate
-            validate_vector(img_values, expected_dim)
-
-            # Product ID (dari filename tanpa extension)
             product_id = str(row['image'].split(".")[0])
 
-            # Metadata
-            metadata = {
+            img_metadata = {
                 'product_id': product_id,
-                'kind': 'img',  # Mark as image vector
+                'kind': 'img',
                 'category': str(row.get('category', 'unknown')).strip(),
-                'filename': str(row['image']),
+                'filename': str(row['image'])
             }
 
-            vectors_batch.append((
+            image_vectors_batch.append((
                 f"{product_id}#img",
                 img_values,
-                metadata
+                img_metadata
             ))
 
+            # Encode TEXT
             if include_text:
-
                 text_doc = build_text_doc(row)
 
                 if not text_doc.strip():
                     logger.warning(f"Empty text for {product_id}, skipping text vector")
-
                 else:
                     txt_emb = embedding_service.encode_text(text_doc)
                     txt_values = to_1d_list(txt_emb)
-
-                    validate_vector(txt_values, expected_dim)
+                    validate_vector(txt_values, text_dim)
 
                     txt_metadata = {
                         'product_id': product_id,
-                        'kind': 'txt',  # Mark as text vector
-                        'category': str(row.get('category', 'unknown')).strip(),
+                        'kind': 'txt',
+                        'category': str(row.get('category', 'unknown')).strip()
                     }
 
-                    vectors_batch.append((
-                        f"{product_id}#txt",  # ID with suffix
+                    text_vectors_batch.append((
+                        f"{product_id}#txt",
                         txt_values,
                         txt_metadata
                     ))
 
             # Batch Upload
-            if len(vectors_batch) >= batch_size:
+            if len(image_vectors_batch) >= batch_size:
                 try:
-                    pinecone_service.upsert(vectors_batch)
-                    success_count += len(vectors_batch)
-                    vectors_batch = []
+                    pinecone_service.upsert_images(image_vectors_batch)
+                    image_success_count += len(image_vectors_batch)
+                    image_vectors_batch = []
                 except Exception as e:
-                    logger.error(f"Batch upload failed: {e}")
-                    error_count += len(vectors_batch)
-                    vectors_batch = []
+                    logger.error(f"Image batch upload failed: {e}")
+                    error_count += len(image_vectors_batch)
+                    image_vectors_batch = []
+
+            if len(text_vectors_batch) >= batch_size:
+                try:
+                    pinecone_service.upsert_text(text_vectors_batch)
+                    text_success_count += len(text_vectors_batch)
+                    text_vectors_batch = []
+                except Exception as e:
+                    logger.error(f"Text batch upload failed: {e}")
+                    error_count += len(text_vectors_batch)
+                    text_vectors_batch = []
 
         except Exception as e:
-            logger.error(f"Failed to process row {idx} (id={row.get('id', 'unknown')}) : {e}")
+            logger.error(f"Failed to process row {idx}: {e}")
             error_count += 1
             continue
 
-    if vectors_batch:
+    # Upload remaining
+    if image_vectors_batch:
         try:
-            pinecone_service.upsert(vectors_batch)
-            success_count += len(vectors_batch)
+            pinecone_service.upsert_images(image_vectors_batch)
+            image_success_count += len(image_vectors_batch)
         except Exception as e:
-            logger.error(f"Final batch upload failed: {e}")
-            error_count += len(vectors_batch)
+            logger.error(f"Final image batch upload failed: {e}")
+            error_count += len(image_vectors_batch)
 
-    if success_count > 0:
-        logger.info("Index build completed!")
-    else:
+    if text_vectors_batch:
+        try:
+            pinecone_service.upsert_text(text_vectors_batch)
+            text_success_count += len(text_vectors_batch)
+        except Exception as e:
+            logger.error(f"Final text batch upload failed: {e}")
+            error_count += len(text_vectors_batch)
+
+    # Summary
+    logger.info(f"✓ Image vectors: {image_success_count}")
+    logger.info(f"✓ Text vectors: {text_success_count}")
+    logger.info(f"✗ Errors: {error_count}")
+
+    if image_success_count == 0 and text_success_count == 0:
         logger.error("No vectors were successfully indexed!")
         sys.exit(1)
 

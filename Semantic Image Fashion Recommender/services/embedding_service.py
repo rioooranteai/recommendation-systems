@@ -42,9 +42,3 @@ class EmbeddingService:
         """Get current model types"""
         image_type = "TensorRT" if Config.USE_TENSORRT else "PyTorch"
         return f"Image: {image_type}, Text: BGE-M3-PyTorch"
-
-test_bge = ["My Name Is Mario"]
-
-service_test = EmbeddingService()
-
-print(service_test.encode_text(test_bge))
