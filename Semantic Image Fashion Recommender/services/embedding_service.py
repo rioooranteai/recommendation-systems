@@ -1,8 +1,7 @@
 from config import Config
 from embedding.base_model import BaseEmbeddingModel
 from embedding.siglip2_pytorch import SigLIPPytorch
-from embedding.qwen3_pytorch import Qwen3Pytorch
-
+from embedding.bge_m3_pytorch import BGEM3Pytorch
 
 class EmbeddingService:
     _instance = None
@@ -20,7 +19,7 @@ class EmbeddingService:
         if self._initialized:
             return
         self._image_model = SigLIPPytorch()
-        self._text_model = Qwen3Pytorch()
+        self._text_model = BGEM3Pytorch()
         self._initialized = True
 
     def encode_images(self, images, batch_size=None):
@@ -28,7 +27,7 @@ class EmbeddingService:
         return self._image_model.encode_images(images, batch_size)
 
     def encode_text(self, texts):
-        """Encode text - delegates to Qwen3 model"""
+        """Encode text - delegates to BGE-M3 model"""
         return self._text_model.encode_text(texts)
 
     def get_embedding_dim(self):
@@ -42,10 +41,10 @@ class EmbeddingService:
     def get_model_type(self) -> str:
         """Get current model types"""
         image_type = "TensorRT" if Config.USE_TENSORRT else "PyTorch"
-        return f"Image: {image_type}, Text: Qwen3-PyTorch"
+        return f"Image: {image_type}, Text: BGE-M3-PyTorch"
 
-test_qwen = ["My Name Is Mario"]
+test_bge = ["My Name Is Mario"]
 
 service_test = EmbeddingService()
 
-print(service_test.encode_text(test_qwen))
+print(service_test.encode_text(test_bge))

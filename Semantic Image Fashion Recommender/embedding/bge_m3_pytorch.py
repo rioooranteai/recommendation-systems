@@ -16,16 +16,19 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("huggingface_hub").setLevel(logging.WARNING)
 
 
-class Qwen3Pytorch(BaseEmbeddingModel):
+class BGEM3Pytorch(BaseEmbeddingModel):
     def __init__(self):
         self.device = Config.DEVICE
+        print(f"Loading BGE-M3 model...")
         self.model = AutoModel.from_pretrained(
             Config.TEXT_MODEL_NAME,
-            torch_dtype=torch.float16
+            torch_dtype=torch.float16,
+            low_cpu_mem_usage=True
         ).to(Config.DEVICE).eval()
         self.tokenizer = AutoTokenizer.from_pretrained(
             Config.TEXT_MODEL_NAME
         )
+        print(f"✓ BGE-M3 model loaded successfully on {self.device}")
 
     def _normalize_embeddings(self, embeddings: torch.Tensor) -> torch.Tensor:
         return embeddings / embeddings.norm(p=2, dim=-1, keepdim=True)
@@ -40,6 +43,8 @@ class Qwen3Pytorch(BaseEmbeddingModel):
         if isinstance(texts, str):
             texts = [texts]
 
+        # BGE models work best without special prefixes
+        # Just use the text as-is
         inputs = self.tokenizer(
             texts,
             padding=True,
@@ -51,6 +56,8 @@ class Qwen3Pytorch(BaseEmbeddingModel):
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         outputs = self.model(**inputs)
+
+        # BGE-M3 uses mean pooling over last hidden state
         embeddings = outputs.last_hidden_state.mean(dim=1)
 
         if normalize:
@@ -62,14 +69,14 @@ class Qwen3Pytorch(BaseEmbeddingModel):
 
     def encode_images(self, images, batch_size: int = 32) -> torch.Tensor:
         """
-        Qwen3 adalah text model, tidak support image encoding.
+        BGE-M3 adalah text model, tidak support image encoding.
         Method ini hanya untuk memenuhi interface BaseEmbeddingModel.
         """
         raise NotImplementedError(
-            "Qwen3 is a text-only model and does not support image encoding. "
+            "BGE-M3 is a text-only model and does not support image encoding. "
             "Use SigLIPPytorch for image encoding instead."
         )
 
     def get_embedding_dim(self) -> int:
-        """Return embedding dimension of the Qwen3 model"""
-        return self.model.config.hidden_size
+        """Return embedding dimension of the BGE-M3 model"""
+        return 1024  # BGE-M3 fixed dimension

@@ -22,15 +22,18 @@ class Config:
     EMBEDDING_DIM = 768
 
     # Text Model Settings
-    TEXT_MODEL_NAME = "Qwen/Qwen3-Embedding-8B"
-    MAX_TOKEN_LENGTH = 512
+    TEXT_MODEL_NAME = "BAAI/bge-m3"
+    MAX_TOKEN_LENGTH = 8192
 
 
     # Pinecone Settings
     PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
     PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT", "us-east-1")
-    PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "semantic-image-fashion-search")
     PINECONE_NAMESPACE = "Fashion Product"
+    PINECONE_IMAGE_INDEX_NAME = "fashion-image-768"
+    IMAGE_EMBEDDING_DIM = 768
+    PINECONE_TEXT_INDEX_NAME = "fashion-text-1024"
+    TEXT_EMBEDDING_DIM = 1024
 
     # Processing Settings
     TOP_K = 10
