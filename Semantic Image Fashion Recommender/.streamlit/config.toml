@@ -1,11 +1,48 @@
 [theme]
-primaryColor = "#FF4B4B"
+# Primary brand color - Dark professional
+primaryColor = "#1d1d1f"
+
+# Background colors - Clean white
 backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F0F2F6"
-textColor = "#262730"
+secondaryBackgroundColor = "#F9FAFB"
+
+# Text color - Dark for readability
+textColor = "#1d1d1f"
+
+# Font family - Modern sans-serif
 font = "sans serif"
 
+# Base theme
+base = "light"
+
 [server]
+# Server configuration
 port = 8501
+headless = true
 enableCORS = false
-enableXsrfProtection = false
+enableXsrfProtection = true
+
+# File upload settings
+maxUploadSize = 200
+maxMessageSize = 200
+
+[browser]
+# Browser settings
+gatherUsageStats = false
+serverAddress = "localhost"
+serverPort = 8501
+
+[runner]
+# Performance settings
+magicEnabled = true
+fastReruns = true
+
+[client]
+# Client settings
+showErrorDetails = true
+toolbarMode = "minimal"
+
+[ui]
+# Hide streamlit branding
+hideTopBar = false
+hideSidebarNav = false

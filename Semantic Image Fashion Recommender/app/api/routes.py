@@ -20,7 +20,7 @@ def health_check():
     return {
         "status": "healthy",
         "device": Config.DEVICE,
-        "image_model": Config.IMAGE_MODEL_NAME,  # Changed
+        "image_model": Config.SIGLIP_MODEL_NAME,  # Changed
         "text_model": Config.TEXT_MODEL_NAME,  # Added
         "image_embedding_dim": Config.IMAGE_EMBEDDING_DIM,  # Changed
         "text_embedding_dim": Config.TEXT_EMBEDDING_DIM,  # Added

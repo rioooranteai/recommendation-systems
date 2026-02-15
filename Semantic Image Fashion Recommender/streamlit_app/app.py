@@ -1,7 +1,6 @@
 import sys
 import time
 from pathlib import Path
-import os
 import streamlit as st
 
 # Add project root to Python path
@@ -27,372 +26,190 @@ if not IMAGE_BASE_PATH.exists():
 
 # Page configuration
 st.set_page_config(
-    page_title="Fashion Search 🛍️",
+    page_title="Fashion Finder",
     page_icon="🛍️",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# ========== IMPROVED CUSTOM CSS ==========
+# ========== CUSTOM CSS - PROFESSIONAL ECOMMERCE STYLE ==========
 st.markdown("""
 <style>
-    /* ============================================
-       GLOBAL & RESET
-    ============================================ */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+    /* ============================================
+       GLOBAL RESET & BASE
+    ============================================ */
     * {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
 
+    /* Force clean white background */
+    .stApp,
+    .main,
+    [data-testid="stAppViewContainer"],
+    [data-testid="stHeader"] {
+        background-color: #FFFFFF !important;
+    }
+
+    /* Hide default streamlit elements */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+    header {visibility: hidden;}
 
     .block-container {
         padding-top: 3rem;
         padding-bottom: 3rem;
-        max-width: 1600px;
+        max-width: 1400px;
     }
 
     /* ============================================
-       HEADER SECTION - Modern Gradient
+       HERO HEADER SECTION
     ============================================ */
-    .main-header {
-        font-size: 3.5rem;
-        font-weight: 800;
-        text-align: center;
-        background: linear-gradient(135deg, #1d1d1f 0%, #4a4a4f 50%, #1d1d1f 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.5rem;
-        letter-spacing: -2px;
-        line-height: 1.2;
+    .hero-header {
+        background: linear-gradient(135deg, #f6f6f6 0%, #ffffff 100%);
+        border-radius: 24px;
+        padding: 3rem 2.5rem;
+        margin-bottom: 2.5rem;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     }
 
-    .subtitle {
-        text-align: center;
+    .hero-title {
+        font-size: 2.5rem !important;
+        font-weight: 700 !important;
+        color: #1d1d1f !important;
+        margin: 0 0 0.5rem 0 !important;
+        line-height: 1.2 !important;
+    }
+
+    .hero-subtitle {
+        font-size: 1.125rem;
         color: #6b7280;
-        font-size: 1.15rem;
-        margin-bottom: 3rem;
+        margin: 0;
         font-weight: 400;
-        letter-spacing: 0.3px;
     }
 
     /* ============================================
-       SEARCH CONTAINER - Apple Style Card
+       SEARCH CONTAINER CARD
     ============================================ */
     .search-container {
         background: #ffffff;
         border-radius: 24px;
-        padding: 2.5rem;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-        margin-bottom: 2.5rem;
-        border: 1px solid #f0f0f0;
-        transition: all 0.3s ease;
-    }
-
-    .search-container:hover {
-        box-shadow: 0 15px 40px rgba(0,0,0,0.12);
-    }
-
-    /* ============================================
-       TABS - Rounded & Modern
-    ============================================ */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: #f6f6f6;
-        border-radius: 16px;
-        padding: 6px;
-    }
-
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        border-radius: 12px;
-        padding: 0 24px;
-        font-weight: 600;
-        font-size: 0.95rem;
-        color: #6b7280;
-        background-color: transparent;
-        border: none;
-        transition: all 0.2s ease;
-    }
-
-    .stTabs [data-baseweb="tab"]:hover {
-        background-color: #e5e7eb;
-        color: #1d1d1f;
-    }
-
-    .stTabs [aria-selected="true"] {
-        background-color: #1d1d1f !important;
-        color: white !important;
-        box-shadow: 0 4px 12px rgba(29, 29, 31, 0.15);
-    }
-
-    /* ============================================
-       FILTERS - Compact & Clean
-    ============================================ */
-    .filters-container {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 20px;
-        padding: 1.8rem;
-        margin-bottom: 2.5rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
         border: 1px solid #e5e7eb;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
 
-    .filter-label {
-        font-size: 1rem;
-        font-weight: 700;
-        color: #1d1d1f;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    /* ============================================
-       PRODUCT GRID - Enhanced Cards
-    ============================================ */
-    .product-card {
-        background: white;
-        border: 1px solid #f0f0f0;
-        border-radius: 16px;
-        padding: 1.2rem;
-        margin-bottom: 1.5rem;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        height: 100%;
-        cursor: pointer;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .product-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, rgba(29, 29, 31, 0.02) 0%, rgba(29, 29, 31, 0.05) 100%);
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        pointer-events: none;
-        border-radius: 16px;
-    }
-
-    .product-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
-        border-color: #1d1d1f;
-    }
-
-    .product-card:hover::before {
-        opacity: 1;
-    }
-
-    .product-image-container {
-        position: relative;
-        width: 100%;
-        padding-bottom: 100%;
-        background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
-        border-radius: 12px;
-        overflow: hidden;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .product-image-placeholder {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 3.5rem;
-        opacity: 0.3;
-        filter: grayscale(20%);
-    }
-
-    /* ============================================
-       SCORE BADGES - Premium Look
-    ============================================ */
-    .score-badge {
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-weight: 700;
-        font-size: 0.85rem;
-        z-index: 10;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        backdrop-filter: blur(10px);
-        letter-spacing: 0.5px;
-    }
-
-    .score-high {
-        background: linear-gradient(135deg, #1d1d1f 0%, #2d2d2f 100%);
-        color: white;
-    }
-
-    .score-medium {
-        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-        color: white;
-    }
-
-    .score-low {
-        background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
-        color: white;
-    }
-
-    .product-title {
-        font-weight: 700;
-        font-size: 1.05rem;
-        color: #1d1d1f;
-        margin-bottom: 0.4rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        letter-spacing: -0.3px;
-    }
-
-    .product-category {
-        color: #6b7280;
-        font-size: 0.9rem;
-        margin-bottom: 0.6rem;
-        font-weight: 500;
-    }
-
-    .product-meta {
-        font-size: 0.85rem;
-        color: #9ca3af;
-        display: flex;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-    }
-
-    .product-meta span {
-        background: #f6f6f6;
-        padding: 0.3rem 0.75rem;
-        border-radius: 16px;
+    .section-title {
+        font-size: 1.25rem;
         font-weight: 600;
-        transition: all 0.2s ease;
-    }
-
-    .product-meta span:hover {
-        background: #e5e7eb;
-        transform: scale(1.05);
-    }
-
-    /* ============================================
-       PRODUCT IMAGES - Polished
-    ============================================ */
-    .product-card img {
-        border-radius: 12px;
-        width: 100%;
-        height: auto;
-        object-fit: cover;
-        aspect-ratio: 1 / 1;
-        transition: transform 0.3s ease;
-    }
-
-    .product-card:hover img {
-        transform: scale(1.05);
-    }
-
-    .product-card > div > img {
-        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-    }
-
-    /* ============================================
-       RESULTS HEADER - Stats Bar
-    ============================================ */
-    .results-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-        padding: 1.5rem 0;
-        border-bottom: 2px solid #f0f0f0;
-    }
-
-    .results-count {
-        font-size: 1.8rem;
-        font-weight: 800;
         color: #1d1d1f;
-        letter-spacing: -0.5px;
-    }
-
-    .results-meta {
-        color: #6b7280;
-        font-size: 0.95rem;
-        display: flex;
-        gap: 2rem;
-        align-items: center;
-        font-weight: 500;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #1d1d1f;
     }
 
     /* ============================================
-       EMPTY STATE - Elegant
+       TEXT INPUT - Rounded & Clean
     ============================================ */
-    .empty-state {
-        text-align: center;
-        padding: 6rem 2rem;
-        color: #6b7280;
-        background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
-        border-radius: 24px;
-        margin: 2rem 0;
+    .stTextInput > div > div > input {
+        border-radius: 12px !important;
+        border: 2px solid #e5e7eb !important;
+        padding: 0.875rem 1rem !important;
+        font-size: 0.9375rem !important;
+        background: #ffffff !important;
+        color: #1d1d1f !important;
+        transition: all 0.2s ease !important;
     }
 
-    .empty-state-icon {
-        font-size: 6rem;
-        margin-bottom: 2rem;
-        opacity: 0.4;
-        filter: grayscale(30%);
+    .stTextInput > div > div > input:focus {
+        border-color: #1d1d1f !important;
+        box-shadow: 0 0 0 4px rgba(29, 29, 31, 0.1) !important;
+        outline: none !important;
     }
 
-    .empty-state h3 {
-        font-size: 1.8rem;
-        color: #1d1d1f;
-        margin-bottom: 0.8rem;
-        font-weight: 700;
-        letter-spacing: -0.5px;
+    .stTextInput > div > div > input::placeholder {
+        color: #9ca3af !important;
     }
 
-    .empty-state p {
-        font-size: 1.05rem;
-        color: #6b7280;
-        line-height: 1.6;
+    /* Hide labels */
+    .stTextInput label,
+    .stFileUploader label,
+    .stSelectbox label,
+    .stSlider label {
+        display: none;
     }
 
     /* ============================================
-       BADGES & PILLS
+       FILE UPLOADER - Dark Premium Style
     ============================================ */
-    .stats-badge {
-        display: inline-block;
-        background: linear-gradient(135deg, #1d1d1f 0%, #2d2d2f 100%);
-        color: white;
-        padding: 0.4rem 1rem;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 700;
-        margin-left: 0.75rem;
-        letter-spacing: 0.5px;
-        box-shadow: 0 4px 12px rgba(29, 29, 31, 0.2);
+    [data-testid="stFileUploader"] {
+        background: #2d3748 !important;
+        border-radius: 16px !important;
+        border: none !important;
+        padding: 2rem !important;
+        transition: all 0.3s ease !important;
+    }
+
+    [data-testid="stFileUploader"]:hover {
+        background: #1d2432 !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    [data-testid="stFileUploader"] section {
+        border: 2px dashed rgba(255, 255, 255, 0.3) !important;
+        background: transparent !important;
+        border-radius: 12px !important;
+        padding: 2rem !important;
+    }
+
+    [data-testid="stFileUploader"] section button {
+        background: #ffffff !important;
+        color: #1d1d1f !important;
+        border: none !important;
+        border-radius: 10px !important;
+        padding: 0.625rem 1.25rem !important;
+        font-weight: 600 !important;
+        font-size: 0.875rem !important;
+        transition: all 0.2s ease !important;
+    }
+
+    [data-testid="stFileUploader"] section button:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    [data-testid="stFileUploader"] section small {
+        color: #cbd5e1 !important;
+        font-size: 0.875rem !important;
+    }
+
+    /* Uploaded image preview */
+    [data-testid="stFileUploader"] + div [data-testid="stImage"] {
+        border-radius: 16px !important;
+        overflow: hidden !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+        border: 1px solid #e5e7eb !important;
     }
 
     /* ============================================
-       BUTTONS - Premium Dark Style
+       BUTTONS - Dark & Rounded
     ============================================ */
     .stButton > button {
         background: #1d1d1f !important;
         color: white !important;
         border: none !important;
         border-radius: 12px !important;
-        padding: 0.75rem 1.5rem !important;
+        padding: 0.875rem 1.5rem !important;
         font-weight: 600 !important;
-        font-size: 0.95rem !important;
+        font-size: 0.9375rem !important;
         transition: all 0.2s ease !important;
-        letter-spacing: 0.3px !important;
+        width: 100%;
+        box-shadow: 0 2px 8px rgba(29, 29, 31, 0.15) !important;
     }
 
     .stButton > button:hover {
@@ -405,154 +222,377 @@ st.markdown("""
         transform: translateY(0) !important;
     }
 
-    /* Secondary Buttons */
-    .stButton > button[data-testid="baseButton-secondary"] {
-        background: white !important;
-        border: 1.5px solid #e5e7eb !important;
-        color: #1d1d1f !important;
-    }
-
-    .stButton > button[data-testid="baseButton-secondary"]:hover {
-        background: #f6f6f6 !important;
-        border-color: #1d1d1f !important;
-    }
-
     /* ============================================
-       INPUTS - Rounded & Clean
+       SETTINGS CARD
     ============================================ */
-    .stTextInput > div > div > input,
-    .stTextArea > div > div > textarea,
-    .stSelectbox > div > div > div {
-        border-radius: 12px !important;
-        border: 1.5px solid #e5e7eb !important;
-        padding: 0.75rem 1rem !important;
-        font-size: 0.95rem !important;
-        transition: all 0.2s ease !important;
-    }
-
-    .stTextInput > div > div > input:focus,
-    .stTextArea > div > div > textarea:focus {
-        border-color: #1d1d1f !important;
-        box-shadow: 0 0 0 3px rgba(29, 29, 31, 0.1) !important;
-    }
-
-    /* ============================================
-       FILE UPLOADER - Enhanced
-    ============================================ */
-    .stFileUploader {
+    .settings-card {
+        background: #f9fafb;
         border-radius: 16px;
-        border: 2px dashed #e5e7eb;
-        padding: 2rem;
-        background: #fafafa;
-        transition: all 0.3s ease;
-    }
-
-    .stFileUploader:hover {
-        border-color: #1d1d1f;
-        background: white;
-    }
-
-    /* ============================================
-       METRICS - Card Style
-    ============================================ */
-    [data-testid="stMetric"] {
-        background: white;
         padding: 1.5rem;
-        border-radius: 16px;
-        border: 1px solid #f0f0f0;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        border: 1px solid #e5e7eb;
     }
 
-    [data-testid="stMetricLabel"] {
-        font-size: 0.9rem;
-        color: #6b7280;
+    .settings-label {
+        font-size: 1rem;
         font-weight: 600;
-    }
-
-    [data-testid="stMetricValue"] {
-        font-size: 1.8rem;
         color: #1d1d1f;
-        font-weight: 800;
-    }
-
-    /* ============================================
-       ALERTS - Rounded
-    ============================================ */
-    .stAlert {
-        border-radius: 16px !important;
-        border: none !important;
-        padding: 1.2rem 1.5rem !important;
-    }
-
-    /* ============================================
-       SPINNERS - Modern
-    ============================================ */
-    .stSpinner > div {
-        border-color: #1d1d1f !important;
-        border-right-color: transparent !important;
+        margin-bottom: 1rem;
+        display: block;
     }
 
     /* ============================================
        SLIDER - Custom Style
     ============================================ */
-    .stSlider > div > div > div {
+    .stSlider {
+        padding: 0.5rem 0;
+    }
+
+    .stSlider > div > div > div > div {
+        background: #e5e7eb !important;
+    }
+
+    .stSlider [data-testid="stTickBar"] {
+        background: #e5e7eb !important;
+        height: 6px !important;
+        border-radius: 3px !important;
+    }
+
+    .stSlider [data-testid="stThumbValue"] {
         background: #1d1d1f !important;
+        color: white !important;
+        font-weight: 600 !important;
+        border-radius: 8px !important;
+        font-size: 0.875rem !important;
+        padding: 0.25rem 0.5rem !important;
+    }
+
+    /* Slider thumb */
+    .stSlider input[type="range"]::-webkit-slider-thumb {
+        background: #1d1d1f !important;
+        width: 20px !important;
+        height: 20px !important;
+        border-radius: 50% !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
     }
 
     /* ============================================
-       EXPANDER - Cleaner
+       SELECTBOX - Rounded
     ============================================ */
+    .stSelectbox > div > div {
+        border-radius: 12px !important;
+        border: 2px solid #e5e7eb !important;
+        background: #ffffff !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .stSelectbox > div > div:hover {
+        border-color: #cbd5e1 !important;
+    }
+
+    .stSelectbox > div > div:focus-within {
+        border-color: #1d1d1f !important;
+        box-shadow: 0 0 0 3px rgba(29, 29, 31, 0.1) !important;
+    }
+
+    /* ============================================
+       EXPANDER - Clean Style
+    ============================================ */
+    [data-testid="stExpander"] {
+        background: #f9fafb !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 12px !important;
+        overflow: hidden !important;
+    }
+
     .streamlit-expanderHeader {
         font-weight: 600 !important;
         color: #1d1d1f !important;
-        border-radius: 12px !important;
+        font-size: 0.9375rem !important;
+        padding: 0.75rem 1rem !important;
+    }
+
+    .streamlit-expanderHeader:hover {
+        background: #f3f4f6 !important;
+    }
+
+    [data-testid="stExpander"] > div > div {
+        padding: 1rem !important;
     }
 
     /* ============================================
-       FOOTER - Minimal
+       DIVIDER - OR Text
     ============================================ */
-    .footer-section {
+    .divider-text {
         text-align: center;
         color: #9ca3af;
-        font-size: 0.9rem;
-        padding: 3rem 0;
-        border-top: 1px solid #f0f0f0;
-        margin-top: 4rem;
+        margin: 1.5rem 0;
+        font-size: 0.875rem;
+        font-weight: 500;
+        position: relative;
     }
 
-    .footer-section strong {
+    .divider-text::before,
+    .divider-text::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        width: 45%;
+        height: 1px;
+        background: #e5e7eb;
+    }
+
+    .divider-text::before {
+        left: 0;
+    }
+
+    .divider-text::after {
+        right: 0;
+    }
+
+    /* ============================================
+       PRODUCT CARDS - Premium Style
+    ============================================ */
+    .product-card {
+        background: #ffffff;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    }
+
+    .product-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+        border-color: #d1d5db;
+    }
+
+    /* Product image container */
+    [data-testid="stImage"] {
+        border-radius: 16px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* Product info styling */
+    .product-id {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: #1d1d1f;
+        margin: 0.75rem 0 0.25rem 0;
+    }
+
+    .product-category {
+        font-size: 0.8125rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        font-weight: 500;
+    }
+
+    .product-match {
+        display: inline-block;
+        background: #f9fafb;
+        color: #1d1d1f;
+        padding: 0.375rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        margin-top: 0.5rem;
+        border: 1px solid #e5e7eb;
+    }
+
+    .product-match.high {
+        background: #dcfce7;
+        color: #15803d;
+        border-color: #bbf7d0;
+    }
+
+    .product-match.medium {
+        background: #fef3c7;
+        color: #92400e;
+        border-color: #fde68a;
+    }
+
+    /* ============================================
+       RESULTS HEADER
+    ============================================ */
+    .results-header {
+        background: #f9fafb;
+        border-radius: 16px;
+        padding: 1.5rem 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .results-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1d1d1f;
+        margin: 0;
+    }
+
+    .results-count {
+        font-size: 0.9375rem;
+        color: #6b7280;
+        font-weight: 500;
+    }
+
+    /* ============================================
+       METRICS - Custom Style
+    ============================================ */
+    [data-testid="stMetric"] {
+        background: #ffffff;
+        padding: 1rem;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+    }
+
+    [data-testid="stMetricLabel"] {
+        font-size: 0.875rem;
+        color: #6b7280;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    [data-testid="stMetricValue"] {
+        font-size: 1.75rem;
         color: #1d1d1f;
         font-weight: 700;
+    }
+
+    /* ============================================
+       ALERT MESSAGES - Rounded
+    ============================================ */
+    .stAlert {
+        border-radius: 12px !important;
+        border: none !important;
+        padding: 1rem 1.25rem !important;
+    }
+
+    /* Success alert */
+    [data-testid="stAlert"] [data-testid="stMarkdownContainer"] p {
+        font-size: 0.9375rem !important;
+        font-weight: 500 !important;
+    }
+
+    /* ============================================
+       EMPTY STATE
+    ============================================ */
+    .empty-state {
+        text-align: center;
+        padding: 5rem 2rem;
+        color: #6b7280;
+        background: #f9fafb;
+        border-radius: 24px;
+        border: 2px dashed #e5e7eb;
+    }
+
+    .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 1.5rem;
+        opacity: 0.3;
+        display: block;
+    }
+
+    .empty-state-title {
+        font-size: 1.5rem;
+        color: #1d1d1f;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state-text {
+        font-size: 1rem;
+        color: #6b7280;
+        margin: 0;
+    }
+
+    /* ============================================
+       DIVIDER
+    ============================================ */
+    hr {
+        margin: 2.5rem 0 !important;
+        border: none !important;
+        border-top: 1px solid #e5e7eb !important;
+    }
+
+    /* ============================================
+       LOADING SPINNER - Custom
+    ============================================ */
+    .stSpinner > div {
+        border-top-color: #1d1d1f !important;
+    }
+
+    /* ============================================
+       COLUMN SPACING
+    ============================================ */
+    [data-testid="column"] {
+        padding: 0 0.75rem !important;
+    }
+
+    [data-testid="column"]:first-child {
+        padding-left: 0 !important;
+    }
+
+    [data-testid="column"]:last-child {
+        padding-right: 0 !important;
     }
 
     /* ============================================
        RESPONSIVE
     ============================================ */
     @media (max-width: 768px) {
-        .main-header {
-            font-size: 2.5rem;
+        .block-container {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
         }
 
-        .subtitle {
+        .hero-header {
+            padding: 2rem 1.5rem;
+        }
+
+        .hero-title {
+            font-size: 2rem !important;
+        }
+
+        .hero-subtitle {
             font-size: 1rem;
         }
 
         .search-container {
             padding: 1.5rem;
-            border-radius: 20px;
         }
 
-        .results-count {
-            font-size: 1.4rem;
+        .results-header {
+            padding: 1rem 1.5rem;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
         }
 
-        .empty-state {
-            padding: 4rem 1.5rem;
+        [data-testid="column"] {
+            padding: 0 0.5rem !important;
         }
+    }
 
-        .empty-state-icon {
-            font-size: 4rem;
-        }
+    /* ============================================
+       SMOOTH SCROLLING
+    ============================================ */
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* ============================================
+       SELECTION COLOR
+    ============================================ */
+    ::selection {
+        background: rgba(29, 29, 31, 0.1);
+        color: #1d1d1f;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -570,703 +610,287 @@ api_client = get_api_client()
 if 'search_results' not in st.session_state:
     st.session_state.search_results = None
 
-if 'filtered_results' not in st.session_state:
-    st.session_state.filtered_results = None
-
 if 'search_history' not in st.session_state:
     st.session_state.search_history = []
 
-if 'active_filters' not in st.session_state:
-    st.session_state.active_filters = {
-        'score_threshold': None,
-        'category': None,
-        'sort_by': 'score'
-    }
+
+def detect_search_mode(uploaded_image, text_query):
+    """Automatically detect search mode based on inputs"""
+    has_image = uploaded_image is not None
+    has_text = text_query is not None and text_query.strip() != ""
+
+    if has_image and has_text:
+        return "hybrid"
+    elif has_image:
+        return "image"
+    elif has_text:
+        return "text"
+    else:
+        return None
 
 
-def apply_filters(results):
-    """Apply active filters to results"""
-    if not results:
-        return []
-
-    items = results.get('results', [])
-    filtered = items.copy()
-
-    # Filter by score threshold
-    if st.session_state.active_filters['score_threshold']:
-        threshold = st.session_state.active_filters['score_threshold']
-        filtered = [item for item in filtered if item.get('score', 0) >= threshold]
-
-    # Filter by category
-    if st.session_state.active_filters['category']:
-        category = st.session_state.active_filters['category']
-        filtered = [item for item in filtered if item.get('category') == category]
-
-    # Sort results
-    sort_by = st.session_state.active_filters['sort_by']
-    if sort_by == 'score':
-        filtered.sort(key=lambda x: x.get('score', 0), reverse=True)
-    elif sort_by == 'category':
-        filtered.sort(key=lambda x: x.get('category', ''))
-
-    return filtered
-
-
-def render_product_card(item, col):
-    """Render a single product card with actual image"""
-    with col:
-        score = item.get('score', 0)
-        score_class = "score-high" if score >= 0.8 else "score-medium" if score >= 0.6 else "score-low"
-
-        category = item.get('category', 'Unknown')
-        product_id = item.get('product_id', 'N/A')
-
-        # ========== TRY TO LOAD IMAGE ==========
-        image_filename = f"{product_id}.jpg"
-        image_path = IMAGE_BASE_PATH / image_filename
-
-        # Start card HTML
-        st.markdown('<div class="product-card">', unsafe_allow_html=True)
-
-        # ========== IMAGE SECTION ==========
-        if image_path.exists():
-            try:
-                from PIL import Image
-                img = Image.open(image_path)
-
-                # Create container with relative positioning
-                st.markdown(
-                    '<div style="position: relative; margin-bottom: 1rem;">',
-                    unsafe_allow_html=True
-                )
-
-                # Display image
-                st.image(img, use_container_width=True)
-
-                # Score badge overlay
-                st.markdown(
-                    f'<div class="score-badge {score_class}" '
-                    f'style="position: absolute; top: 10px; right: 10px; z-index: 10;">'
-                    f'{format_score(score)}'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
-
-                st.markdown('</div>', unsafe_allow_html=True)
-
-            except Exception as e:
-                # Fallback to emoji
-                category_emoji = {
-                    'Tshirts': '👕', 'Shirts': '👔', 'Jeans': '👖',
-                    'Trousers': '👔', 'Shoes': '👟', 'Watches': '⌚',
-                    'Bags': '👜', 'Sunglasses': '🕶️',
-                }
-                emoji = category_emoji.get(category, '👗')
-
-                st.markdown(
-                    f'<div class="product-image-container">'
-                    f'<div class="product-image-placeholder">{emoji}</div>'
-                    f'<span class="score-badge {score_class}">{format_score(score)}</span>'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
-        else:
-            # Image not found - use emoji
-            category_emoji = {
-                'Tshirts': '👕', 'Shirts': '👔', 'Jeans': '👖',
-                'Trousers': '👔', 'Shoes': '👟', 'Watches': '⌚',
-                'Bags': '👜', 'Sunglasses': '🕶️',
-            }
-            emoji = category_emoji.get(category, '👗')
-
-            st.markdown(
-                f'<div class="product-image-container">'
-                f'<div class="product-image-placeholder">{emoji}</div>'
-                f'<span class="score-badge {score_class}">{format_score(score)}</span>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
-
-        # ========== PRODUCT INFO ==========
-        st.markdown(
-            f'<div class="product-title" title="{product_id}">{product_id}</div>',
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
-            f'<div class="product-category">📦 {category}</div>',
-            unsafe_allow_html=True
-        )
-
-        # Meta badges
-        meta_html = '<div class="product-meta">'
-
-        if item.get('image_score') is not None:
-            meta_html += f'<span>🖼️ {format_score(item["image_score"])}</span>'
-
-        if item.get('text_score') is not None:
-            meta_html += f'<span>📝 {format_score(item["text_score"])}</span>'
-
-        meta_html += '</div></div>'  # Close product-meta and product-card
-
-        st.markdown(meta_html, unsafe_allow_html=True)
-
-
-def render_quick_filters(results):
-    """Render quick filter buttons"""
-    st.markdown('<div class="filters-container">', unsafe_allow_html=True)
-    st.markdown('<div class="filter-label">🎯 Quick Filters</div>', unsafe_allow_html=True)
-
-    col1, col2, col3, col4, col5 = st.columns(5)
-
-    items = results.get('results', [])
-
-    # Get unique categories from results
-    categories = list(set([item.get('category', 'Unknown') for item in items]))
-    categories.sort()
-
-    # Count items by score range
-    high_score_count = len([i for i in items if i.get('score', 0) >= 0.8])
-    medium_score_count = len([i for i in items if 0.6 <= i.get('score', 0) < 0.8])
-
-    with col1:
-        if st.button(
-                f"⭐ Top ({high_score_count})",
-                use_container_width=True,
-                key="filter_top"
-        ):
-            if st.session_state.active_filters['score_threshold'] == 0.8:
-                st.session_state.active_filters['score_threshold'] = None
-            else:
-                st.session_state.active_filters['score_threshold'] = 0.8
-            st.rerun()
-
-    with col2:
-        if st.button(
-                f"🎯 Good ({medium_score_count})",
-                use_container_width=True,
-                key="filter_medium"
-        ):
-            if st.session_state.active_filters['score_threshold'] == 0.6:
-                st.session_state.active_filters['score_threshold'] = None
-            else:
-                st.session_state.active_filters['score_threshold'] = 0.6
-            st.rerun()
-
-    with col3:
-        # Category filter dropdown
-        selected_category = st.selectbox(
-            "Category",
-            ["All Categories"] + categories,
-            key="filter_category_select",
-            label_visibility="collapsed"
-        )
-
-        if selected_category != "All Categories":
-            st.session_state.active_filters['category'] = selected_category
-        else:
-            st.session_state.active_filters['category'] = None
-
-    with col4:
-        # Sort options
-        sort_option = st.selectbox(
-            "Sort",
-            ["Score ↓", "Category A-Z"],
-            key="sort_select",
-            label_visibility="collapsed"
-        )
-
-        if sort_option == "Score ↓":
-            st.session_state.active_filters['sort_by'] = 'score'
-        else:
-            st.session_state.active_filters['sort_by'] = 'category'
-
-    with col5:
-        if st.button("🔄 Reset", use_container_width=True, key="reset_filters"):
-            st.session_state.active_filters = {
-                'score_threshold': None,
-                'category': None,
-                'sort_by': 'score'
-            }
-            st.rerun()
-
-    # Show active filters
-    active_filter_tags = []
-
-    if st.session_state.active_filters['score_threshold']:
-        threshold = st.session_state.active_filters['score_threshold']
-        active_filter_tags.append(f"Score ≥ {int(threshold * 100)}%")
-
-    if st.session_state.active_filters['category']:
-        active_filter_tags.append(f"{st.session_state.active_filters['category']}")
-
-    if active_filter_tags:
-        st.markdown(
-            f"<div style='margin-top: 1rem; color: #6b7280; font-size: 0.9rem; font-weight: 600;'>"
-            f"🔖 Active: {' • '.join(active_filter_tags)}</div>",
-            unsafe_allow_html=True
-        )
-
-    st.markdown('</div>', unsafe_allow_html=True)
+def get_match_class(score):
+    """Return CSS class based on match score"""
+    if score >= 0.8:
+        return "high"
+    elif score >= 0.5:
+        return "medium"
+    else:
+        return ""
 
 
 def main():
     """Main application"""
 
-    # Header
-    st.markdown('<h1 class="main-header">🛍️ Fashion Finder</h1>', unsafe_allow_html=True)
-    st.markdown(
-        '<p class="subtitle">AI-powered visual search for fashion items</p>',
-        unsafe_allow_html=True
-    )
+    # ========== HERO HEADER ==========
+    st.markdown("""
+    <div class="hero-header">
+        <h1 class="hero-title">🛍️ Fashion Finder</h1>
+        <p class="hero-subtitle">Discover your perfect style with AI-powered visual search</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # ========== SEARCH SECTION (TOP) ==========
+    # ========== SEARCH SECTION ==========
     st.markdown('<div class="search-container">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">Search Products</div>', unsafe_allow_html=True)
 
-    # Search Mode Tabs
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "🖼️ Image Search",
-        "📝 Text Search",
-        "🔄 Hybrid Search",
-        "📊 Statistics"
-    ])
+    # Layout: 2 columns (search inputs | settings)
+    col_search, col_settings = st.columns([2.5, 1.5], gap="large")
 
-    uploaded_image = None
-    text_query = None
-    search_triggered = False
+    with col_search:
+        # Text search
+        text_query = st.text_input(
+            "text_search",
+            placeholder="Describe what you're looking for... (e.g., red striped summer dress)",
+            label_visibility="collapsed",
+            key="text_input"
+        )
 
-    # Tab 1: Image Search
-    with tab1:
-        st.markdown("### Upload Fashion Image")
+        st.markdown('<p class="divider-text">or upload an image</p>', unsafe_allow_html=True)
 
-        col_upload, col_settings = st.columns([2, 1])
+        # Image upload
+        uploaded_file = st.file_uploader(
+            "Upload image",
+            type=StreamlitConfig.ALLOWED_EXTENSIONS,
+            key="image_upload",
+            label_visibility="collapsed"
+        )
 
-        with col_upload:
-            uploaded_file = st.file_uploader(
-                "Drop your image here",
-                type=StreamlitConfig.ALLOWED_EXTENSIONS,
-                key="image_search_uploader",
-                help="Drag and drop or click to upload (JPG, PNG)"
-            )
+        uploaded_image = None
+        if uploaded_file:
+            uploaded_image = validate_image(uploaded_file)
+            if uploaded_image:
+                display_img = resize_image(uploaded_image.copy(), (500, 500))
+                st.image(display_img, use_container_width=True)
+            else:
+                st.error("❌ Invalid image file. Please upload a valid image.")
 
-            if uploaded_file:
-                uploaded_image = validate_image(uploaded_file)
-                if uploaded_image:
-                    # Resize for display
-                    display_img = resize_image(uploaded_image.copy(), (400, 400))
-                    st.image(display_img, caption="Query Image", use_container_width=True)
-                else:
-                    st.error("❌ Invalid image file")
+    with col_settings:
+        st.markdown('<span class="settings-label">⚙️ Settings</span>', unsafe_allow_html=True)
 
-        with col_settings:
-            st.markdown("#### ⚙️ Settings")
+        top_k = st.slider(
+            "Number of results",
+            min_value=5,
+            max_value=50,
+            value=12,
+            step=1,
+            help="How many similar products to show"
+        )
 
-            top_k_img = st.slider(
-                "Results",
-                min_value=1,
-                max_value=50,
-                value=12,
-                key="topk_img"
-            )
+        categories = api_client.get_categories()
+        category = st.selectbox(
+            "Category filter",
+            ["All Categories"] + categories,
+            help="Filter by product category"
+        )
+        category = None if category == "All Categories" else category
 
-            categories = api_client.get_categories()
-            category_img = st.selectbox(
-                "Category",
-                ["All"] + categories,
-                key="cat_img"
-            )
-            category_img = None if category_img == "All" else category_img
+        # Advanced settings for hybrid
+        search_mode = detect_search_mode(uploaded_image, text_query)
 
-            st.markdown("")
+        image_weight = 0.7
+        text_weight = 0.3
+        use_rerank = True
 
-            if st.button(
-                    "🔍 Search",
-                    key="search_img",
-                    type="primary",
-                    use_container_width=True
-            ):
-                if uploaded_image:
-                    search_triggered = True
-                    search_mode = "image"
-                    top_k = top_k_img
-                    category = category_img
-                else:
-                    st.error("Please upload an image first!")
+        if search_mode == "hybrid":
+            with st.expander("⚙️ Advanced Settings"):
+                st.markdown("**Hybrid Search Weights**")
 
-    # Tab 2: Text Search
-    with tab2:
-        st.markdown("### Describe What You're Looking For")
-
-        col_text, col_settings2 = st.columns([2, 1])
-
-        with col_text:
-            text_query = st.text_area(
-                "Search query",
-                placeholder="e.g., red striped t-shirt, blue denim jeans, leather jacket...",
-                key="text_query_input",
-                height=120,
-                label_visibility="collapsed"
-            )
-
-            # Example queries
-            st.markdown("**💡 Try these:**")
-            example_col1, example_col2, example_col3 = st.columns(3)
-
-            with example_col1:
-                if st.button("Red striped shirt", key="ex1", use_container_width=True):
-                    st.session_state.text_query_input = "red striped shirt"
-                    st.rerun()
-
-            with example_col2:
-                if st.button("Blue denim jeans", key="ex2", use_container_width=True):
-                    st.session_state.text_query_input = "blue denim jeans"
-                    st.rerun()
-
-            with example_col3:
-                if st.button("Leather shoes", key="ex3", use_container_width=True):
-                    st.session_state.text_query_input = "black leather shoes"
-                    st.rerun()
-
-        with col_settings2:
-            st.markdown("#### ⚙️ Settings")
-
-            top_k_txt = st.slider(
-                "Results",
-                min_value=1,
-                max_value=50,
-                value=12,
-                key="topk_txt"
-            )
-
-            categories = api_client.get_categories()
-            category_txt = st.selectbox(
-                "Category",
-                ["All"] + categories,
-                key="cat_txt"
-            )
-            category_txt = None if category_txt == "All" else category_txt
-
-            st.markdown("")
-
-            if st.button(
-                    "🔍 Search",
-                    key="search_txt",
-                    type="primary",
-                    use_container_width=True
-            ):
-                if text_query:
-                    search_triggered = True
-                    search_mode = "text"
-                    top_k = top_k_txt
-                    category = category_txt
-                else:
-                    st.error("Please enter a search query!")
-
-    # Tab 3: Hybrid Search
-    with tab3:
-        st.markdown("### Combine Image + Text Search")
-
-        col_hybrid1, col_hybrid2 = st.columns([2, 1])
-
-        with col_hybrid1:
-            st.markdown("##### 1️⃣ Upload Image")
-            uploaded_file_hybrid = st.file_uploader(
-                "Image",
-                type=StreamlitConfig.ALLOWED_EXTENSIONS,
-                key="hybrid_uploader",
-                label_visibility="collapsed"
-            )
-
-            if uploaded_file_hybrid:
-                uploaded_image_hybrid = validate_image(uploaded_file_hybrid)
-                if uploaded_image_hybrid:
-                    display_img = resize_image(uploaded_image_hybrid.copy(), (300, 300))
-                    st.image(display_img, width=300)
-
-            st.markdown("##### 2️⃣ Add Text Preference")
-            text_query_hybrid = st.text_input(
-                "Text",
-                placeholder="e.g., red color, striped pattern, casual style...",
-                key="hybrid_text",
-                label_visibility="collapsed"
-            )
-
-        with col_hybrid2:
-            st.markdown("#### ⚙️ Settings")
-
-            top_k_hyb = st.slider(
-                "Results",
-                min_value=1,
-                max_value=50,
-                value=12,
-                key="topk_hyb"
-            )
-
-            categories = api_client.get_categories()
-            category_hyb = st.selectbox(
-                "Category",
-                ["All"] + categories,
-                key="cat_hyb"
-            )
-            category_hyb = None if category_hyb == "All" else category_hyb
-
-            with st.expander("⚙️ Advanced"):
                 image_weight = st.slider(
-                    "Image Weight",
+                    "Image importance",
                     0.0, 1.0, 0.7, 0.1,
-                    help="Visual similarity"
+                    help="How much to prioritize visual similarity"
                 )
 
                 text_weight = st.slider(
-                    "Text Weight",
+                    "Text importance",
                     0.0, 1.0, 0.3, 0.1,
-                    help="Text preference"
+                    help="How much to prioritize text description"
                 )
 
                 use_rerank = st.checkbox(
-                    "Enable Reranking",
-                    value=True
+                    "Enable AI Reranking",
+                    value=True,
+                    help="Use advanced reranking for better results"
                 )
 
-            st.markdown("")
-
-            if st.button(
-                    "🔍 Search",
-                    key="search_hyb",
-                    type="primary",
-                    use_container_width=True
-            ):
-                if uploaded_file_hybrid and text_query_hybrid:
-                    uploaded_image = uploaded_image_hybrid
-                    text_query = text_query_hybrid
-                    search_triggered = True
-                    search_mode = "hybrid"
-                    top_k = top_k_hyb
-                    category = category_hyb
-                else:
-                    st.error("Need both image and text!")
-
-    # Tab 4: Stats
-    with tab4:
-        st.markdown("### 📊 System Status")
-
-        col_stat1, col_stat2 = st.columns(2)
-
-        with col_stat1:
-            if st.button("🔄 Refresh", key="refresh_stats"):
-                st.cache_resource.clear()
-
-        # API Health
-        health = api_client.check_health()
-
-        if health.get("status") == "healthy":
-            st.success("✅ System Online")
-
-            col1, col2, col3 = st.columns(3)
-
-            with col1:
-                st.metric("Device", health.get("device", "N/A"))
-
-            with col2:
-                st.metric("Model", health.get("model", "N/A").split("/")[-1])
-
-            with col3:
-                st.metric("Embedding Dim", health.get("embedding_dim", "N/A"))
-
-            st.markdown("---")
-            st.markdown("#### Vector Index")
-
-            stats = api_client.get_stats()
-
-            if stats.get("success"):
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    st.metric("Total Vectors", f"{stats.get('total_vectors', 0):,}")
-
-                with col2:
-                    st.metric("Dimension", stats.get("dimension", 0))
-
-                if stats.get("namespaces"):
-                    st.markdown("**Namespaces:**")
-                    for ns, info in stats["namespaces"].items():
-                        st.write(f"• `{ns}`: {info.get('vector_count', 0):,} vectors")
-
-            # Search History
-            if st.session_state.search_history:
-                st.markdown("---")
-                st.markdown("#### 📜 Recent Searches")
-
-                for idx, hist in enumerate(reversed(st.session_state.search_history[-5:])):
-                    st.write(
-                        f"{idx + 1}. **{hist['mode']}** - "
-                        f"*{hist['query']}* - "
-                        f"{hist['results_count']} results "
-                        f"({hist['time']:.2f}s)"
-                    )
-        else:
-            st.error("❌ API Unavailable")
-            if "error" in health:
-                st.error(health["error"])
+        st.markdown("")
+        search_clicked = st.button("🔍 Search Products", type="primary")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ========== PERFORM SEARCH ==========
-    if search_triggered:
-        with st.spinner("🔍 Searching..."):
-            start_time = time.time()
+    if search_clicked:
+        search_mode = detect_search_mode(uploaded_image, text_query)
 
-            try:
-                if search_mode == "image":
-                    results = api_client.search_by_image(
-                        image=uploaded_image,
-                        top_k=top_k,
-                        category=category
-                    )
+        if search_mode is None:
+            st.error("⚠️ Please provide either an image or text description to search")
+        else:
+            with st.spinner("🔎 Searching for similar products..."):
+                start_time = time.time()
 
-                elif search_mode == "text":
-                    results = api_client.search_by_text(
-                        text_query=text_query,
-                        top_k=top_k,
-                        category=category
-                    )
+                try:
+                    if search_mode == "image":
+                        results = api_client.search_by_image(
+                            image=uploaded_image,
+                            top_k=top_k,
+                            category=category
+                        )
+                        query_display = "Visual Search"
 
-                else:  # hybrid
-                    results = api_client.search_by_image(
-                        image=uploaded_image,
-                        text_query=text_query,
-                        top_k=top_k,
-                        image_weight=image_weight,
-                        text_weight=text_weight,
-                        use_rerank=use_rerank,
-                        category=category
-                    )
+                    elif search_mode == "text":
+                        results = api_client.search_by_text(
+                            text_query=text_query,
+                            top_k=top_k,
+                            category=category
+                        )
+                        query_display = f'"{text_query}"'
 
-                search_time = time.time() - start_time
+                    else:  # hybrid
+                        results = api_client.search_by_image(
+                            image=uploaded_image,
+                            text_query=text_query,
+                            top_k=top_k,
+                            image_weight=image_weight,
+                            text_weight=text_weight,
+                            use_rerank=use_rerank,
+                            category=category
+                        )
+                        query_display = f'Hybrid: "{text_query}"'
 
-                if results.get("success"):
-                    st.session_state.search_results = results
-                    st.session_state.search_time = search_time
+                    search_time = time.time() - start_time
 
-                    # Reset filters
-                    st.session_state.active_filters = {
-                        'score_threshold': None,
-                        'category': None,
-                        'sort_by': 'score'
-                    }
+                    if results.get("success"):
+                        st.session_state.search_results = results
+                        st.session_state.search_time = search_time
+                        st.session_state.search_mode = search_mode
+                        st.session_state.query_display = query_display
 
-                    # Add to history
-                    st.session_state.search_history.append({
-                        'mode': search_mode.capitalize(),
-                        'query': text_query if text_query else "Image search",
-                        'results_count': len(results.get('results', [])),
-                        'time': search_time
-                    })
+                        st.success(f"✅ Found {len(results.get('results', []))} products in {search_time:.2f} seconds")
+                    else:
+                        st.error(f"❌ Search failed: {results.get('error', 'Unknown error')}")
 
-                    st.success(
-                        f"✅ Found {len(results.get('results', []))} items in {search_time:.2f}s"
-                    )
-                else:
-                    st.error(f"❌ {results.get('error', 'Search failed')}")
-
-            except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
-
-    # ========== QUICK FILTERS ==========
-    if st.session_state.search_results:
-        st.markdown("---")
-        render_quick_filters(st.session_state.search_results)
+                except Exception as e:
+                    st.error(f"❌ Error occurred: {str(e)}")
 
     # ========== RESULTS SECTION ==========
-    st.markdown("---")
-
     if st.session_state.search_results:
-        # Apply filters
-        filtered_items = apply_filters(st.session_state.search_results)
+        st.divider()
 
-        if filtered_items:
-            # Results Header
-            col_count, col_meta = st.columns([2, 1])
+        items = st.session_state.search_results.get('results', [])
 
-            with col_count:
-                total = len(st.session_state.search_results.get('results', []))
-                filtered = len(filtered_items)
+        if items:
+            # Results header
+            col_h1, col_h2, col_h3 = st.columns([2, 1, 1])
 
-                if filtered < total:
-                    st.markdown(
-                        f'<div class="results-count">'
-                        f'🛍️ {filtered} / {total} Products'
-                        f'<span class="stats-badge">Filtered</span>'
-                        f'</div>',
-                        unsafe_allow_html=True
-                    )
-                else:
-                    st.markdown(
-                        f'<div class="results-count">🛍️ {filtered} Products</div>',
-                        unsafe_allow_html=True
-                    )
+            with col_h1:
+                st.markdown(f'<h2 class="results-title">{len(items)} Products Found</h2>',
+                            unsafe_allow_html=True)
+                st.markdown(f'<p class="results-count">Query: {st.session_state.get("query_display", "N/A")}</p>',
+                            unsafe_allow_html=True)
 
-            with col_meta:
-                st.markdown(
-                    f'<div class="results-meta">'
-                    f'<span>⏱️ {st.session_state.search_time:.2f}s</span>'
-                    f'<span>🔍 {st.session_state.search_results.get("query_type", "N/A")}</span>'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
+            with col_h2:
+                search_mode_display = st.session_state.get('search_mode', 'N/A').capitalize()
+                st.metric("Search Mode", search_mode_display)
+
+            with col_h3:
+                st.metric("Response Time", f"{st.session_state.search_time:.2f}s")
 
             st.markdown("")
+            st.markdown("")
 
-            # Product Grid (4 columns)
+            # Product grid (4 columns)
             num_cols = 4
 
-            for i in range(0, len(filtered_items), num_cols):
-                cols = st.columns(num_cols)
+            for i in range(0, len(items), num_cols):
+                cols = st.columns(num_cols, gap="medium")
 
                 for idx, col in enumerate(cols):
-                    if i + idx < len(filtered_items):
-                        render_product_card(filtered_items[i + idx], col)
+                    if i + idx < len(items):
+                        item = items[i + idx]
+
+                        with col:
+                            # Container for product card
+                            product_id = item.get('product_id', 'N/A')
+                            image_path = IMAGE_BASE_PATH / f"{product_id}.jpg"
+
+                            # Try to load image
+                            if image_path.exists():
+                                try:
+                                    from PIL import Image
+                                    img = Image.open(image_path)
+                                    st.image(img, use_container_width=True)
+                                except:
+                                    st.markdown("""
+                                    <div style='background: #f3f4f6; padding: 3rem 1rem; 
+                                                text-align: center; border-radius: 16px;
+                                                color: #9ca3af;'>
+                                        <p style='font-size: 2rem; margin: 0;'>📷</p>
+                                        <p style='font-size: 0.875rem; margin: 0.5rem 0 0 0;'>Image unavailable</p>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                            else:
+                                st.markdown("""
+                                <div style='background: #f3f4f6; padding: 3rem 1rem; 
+                                            text-align: center; border-radius: 16px;
+                                            color: #9ca3af;'>
+                                    <p style='font-size: 2rem; margin: 0;'>📷</p>
+                                    <p style='font-size: 0.875rem; margin: 0.5rem 0 0 0;'>Image unavailable</p>
+                                </div>
+                                """, unsafe_allow_html=True)
+
+                            # Product info
+                            st.markdown(f'<p class="product-id">{product_id}</p>', unsafe_allow_html=True)
+                            st.markdown(f'<p class="product-category">{item.get("category", "Unknown")}</p>',
+                                        unsafe_allow_html=True)
+
+                            # Match score with color coding
+                            score = item.get('score', 0)
+                            score_pct = int(score * 100)
+                            match_class = get_match_class(score)
+
+                            st.markdown(f'<span class="product-match {match_class}">✓ {score_pct}% Match</span>',
+                                        unsafe_allow_html=True)
 
         else:
-            # No results after filtering
-            st.markdown(
-                """
-                <div class="empty-state">
-                    <div class="empty-state-icon">🔍</div>
-                    <h3>No Matches Found</h3>
-                    <p>Try adjusting your filters or search criteria</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+            st.markdown("""
+            <div class="empty-state">
+                <span class="empty-state-icon">🔍</span>
+                <h3 class="empty-state-title">No Results Found</h3>
+                <p class="empty-state-text">Try adjusting your search criteria or filters</p>
+            </div>
+            """, unsafe_allow_html=True)
 
     else:
         # Initial empty state
-        st.markdown(
-            """
-            <div class="empty-state">
-                <div class="empty-state-icon">👆</div>
-                <h3>Start Searching</h3>
-                <p>Upload an image or enter a description to find similar fashion items</p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    # Footer
-    st.markdown(
-        """
-        <div class="footer-section">
-            <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">
-                Powered by <strong>SigLIP</strong> + <strong>Pinecone</strong>
-            </p>
-            <p style="font-size: 0.85rem; color: #9ca3af;">
-                🚀 Semantic Search • 🎯 AI Recommendations • ⚡ Real-time Results
-            </p>
+        st.divider()
+        st.markdown("""
+        <div class="empty-state">
+            <span class="empty-state-icon">🛍️</span>
+            <h3 class="empty-state-title">Start Your Fashion Journey</h3>
+            <p class="empty-state-text">Upload an image or describe what you're looking for to discover similar products</p>
         </div>
-        """,
-        unsafe_allow_html=True
-    )
+        """, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
