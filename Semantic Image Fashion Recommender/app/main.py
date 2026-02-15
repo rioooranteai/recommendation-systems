@@ -25,22 +25,23 @@ async def lifespan(app: FastAPI):
     """
     # ========== STARTUP ==========
     logger.info("=" * 60)
-    logger.info("Starting Semantic Fashion Search API...")
+    logger.info("Starting Semantic Fashion Search API (Two-Stage)")
     logger.info("=" * 60)
 
     try:
         # Initialize services
         logger.info("Step 1/3: Initializing Embedding Service...")
         embedding_service = EmbeddingService()
-        logger.info(f"✓ Embedding Service ready (dim={embedding_service.get_embedding_dim()})")
+        logger.info(f"✓ Image Embedding ready (SigLIP, dim={embedding_service.get_image_embedding_dim()})")
+        logger.info(f"✓ Text Embedding ready (BGE-M3, dim={embedding_service.get_embedding_dim()})")
 
         logger.info("Step 2/3: Initializing Pinecone Service...")
         pinecone_service = PineconeService()
-        logger.info("✓ Pinecone Service ready")
+        logger.info("✓ Pinecone Service ready (dual indexes)")
 
         logger.info("Step 3/3: Initializing Search Engine...")
         search_engine = SearchEngine(embedding_service, pinecone_service)
-        logger.info("✓ Search Engine ready")
+        logger.info("✓ Search Engine ready (two-stage retrieval)")
 
         # Register services to dependency injection container
         logger.info("Registering services to dependency container...")
@@ -56,11 +57,14 @@ async def lifespan(app: FastAPI):
 
         logger.info("=" * 60)
         logger.info("Configuration:")
-        logger.info(f"  Model: {Config.SIGLIP_MODEL_NAME}")
+        logger.info(f"  Image Model: {Config.SIGLIP_MODEL_NAME}")
+        logger.info(f"  Text Model: {Config.TEXT_MODEL_NAME}")
         logger.info(f"  Device: {Config.DEVICE}")
-        logger.info(f"  Embedding Dimension: {Config.EMBEDDING_DIM}")
-        logger.info(f"  Pinecone Index: {Config.PINECONE_INDEX_NAME}")
-        logger.info(f"  Pinecone Namespace: {Config.PINECONE_NAMESPACE}")
+        logger.info(f"  Image Dimension: {Config.IMAGE_EMBEDDING_DIM}")
+        logger.info(f"  Text Dimension: {Config.TEXT_EMBEDDING_DIM}")
+        logger.info(f"  Image Index: {Config.PINECONE_IMAGE_INDEX_NAME}")
+        logger.info(f"  Text Index: {Config.PINECONE_TEXT_INDEX_NAME}")
+        logger.info(f"  Namespace: {Config.PINECONE_NAMESPACE}")
         logger.info("=" * 60)
         logger.info("✓✓✓ ALL SERVICES INITIALIZED SUCCESSFULLY! ✓✓✓")
         logger.info("✓✓✓ API IS READY TO ACCEPT REQUESTS ✓✓✓")
@@ -84,22 +88,28 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Semantif Fashion Search API",
+    title="Semantic Fashion Search API",
     description="""
-    Multimodal Fashion Search API
-    
+    Two-Stage Multimodal Fashion Search API
+
     Search for fashion items using:
-    - **Image search**: Upload an image to find similar items
-    - **Text search**: Use text descriptions to find items
-    - **Hybrid search**: Combine image + text for refined results
-    
+    - **Image search**: Upload an image to find visually similar items (SigLIP 768-dim)
+    - **Text search**: Use natural language descriptions (BGE-M3 1024-dim)
+    - **Hybrid search**: Combine image + text with RRF fusion for best results
+
     Features:
+    - Dual-index architecture (separate image & text indexes)
     - Visual similarity matching using SigLIP embeddings
-    - Text-based reranking for preference refinement
+    - Semantic text search using BGE-M3 embeddings
+    - Reciprocal Rank Fusion (RRF) for hybrid results
     - Category filtering
-    - Adjustable image/text weights
+    - Adjustable alpha weight (0=text only, 1=image only)
+
+    Models:
+    - Image: google/siglip-so400m-patch14-384 (768-dim)
+    - Text: BAAI/bge-m3 (1024-dim)
     """,
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc"
@@ -119,9 +129,18 @@ app.include_router(routes.router, prefix='/api', tags=['Search'])
 @app.get("/", tags=['Root'])
 def root():
     return {
-        "message": "Semantic Fashion Search API",
-        "version": "1.0.0",
+        "message": "Semantic Fashion Search API (Two-Stage Architecture)",
+        "version": "2.0.0",
         "status": "running",
+        "architecture": "two-stage-retrieval",
+        "models": {
+            "image": Config.SIGLIP_MODEL_NAME,
+            "text": Config.TEXT_MODEL_NAME
+        },
+        "indexes": {
+            "image": Config.PINECONE_IMAGE_INDEX_NAME,
+            "text": Config.PINECONE_TEXT_INDEX_NAME
+        },
         "documentation": {
             "swagger": "/docs",
             "redoc": "/redoc"
@@ -134,6 +153,7 @@ def root():
             "stats": "/api/stats"
         }
     }
+
 
 @app.get("/ping", tags=['Root'])
 def ping():

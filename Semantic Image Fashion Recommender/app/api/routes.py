@@ -20,24 +20,31 @@ def health_check():
     return {
         "status": "healthy",
         "device": Config.DEVICE,
-        "model": Config.SIGLIP_MODEL_NAME,
-        "embedding_dim": Config.EMBEDDING_DIM,
+        "image_model": Config.IMAGE_MODEL_NAME,  # Changed
+        "text_model": Config.TEXT_MODEL_NAME,  # Added
+        "image_embedding_dim": Config.IMAGE_EMBEDDING_DIM,  # Changed
+        "text_embedding_dim": Config.TEXT_EMBEDDING_DIM,  # Added
         "pinecone_namespace": Config.PINECONE_NAMESPACE,
-        "pinecone_index": Config.PINECONE_INDEX_NAME
+        "image_index": Config.PINECONE_IMAGE_INDEX_NAME,  # Changed
+        "text_index": Config.PINECONE_TEXT_INDEX_NAME  # Added
     }
 
 
 @router.post("/search/image", response_model=SearchResponse)
 async def search_by_image(
         file: UploadFile = File(..., description="Image file (JPG/PNG)"),
-        text_query: Optional[str] = Form(None, description="Optional text preference (e.g., 'red color')"),
+        text_query: Optional[str] = Form(None, description="Optional text query for hybrid search"),
         top_k: int = Form(10, ge=1, le=50, description="Number of results to return"),
-        image_weight: float = Form(0.7, ge=0.0, le=1.0, description="Weight for image similarity"),
-        text_weight: float = Form(0.3, ge=0.0, le=1.0, description="Weight for text similarity"),
-        use_rerank: bool = Form(True, description="Enable text-based reranking"),
+        alpha: float = Form(0.7, ge=0.0, le=1.0, description="Image weight (0=text only, 1=image only)"),
         category: Optional[str] = Form(None, description="Filter by category"),
         search_engine: SearchEngine = Depends(get_search_engine)
 ):
+    """
+    Search by image with optional text query.
+    - alpha=1.0: pure image search
+    - alpha=0.5: balanced image+text
+    - alpha=0.0: pure text search (but why use this endpoint?)
+    """
     try:
         if file.content_type not in ["image/jpeg", "image/jpg", "image/png"]:
             raise HTTPException(
@@ -59,19 +66,18 @@ async def search_by_image(
         if category:
             filters['category'] = {"$eq": category}
 
+        # Call search with new parameters
         results = search_engine.search(
             image=image,
             text_query=text_query,
             top_k=top_k,
             filters=filters if filters else None,
-            image_weight=image_weight,
-            text_weight=text_weight,
-            use_rerank=use_rerank
+            alpha=alpha  # Changed from image_weight/text_weight
         )
 
         return {
             "success": True,
-            "query_type": "image+text" if text_query else "image_only",
+            "query_type": "hybrid" if text_query else "image_only",
             "total_results": len(results),
             "results": results
         }
@@ -93,28 +99,24 @@ def search_by_text(
         category: Optional[str] = Form(None, description="Category filter"),
         search_engine: SearchEngine = Depends(get_search_engine)
 ):
+    """Pure text search using BGE-M3 embeddings"""
     try:
-        # Build filters
         filters = {}
         if category:
             filters['category'] = {"$eq": category}
 
-        logger.info(
-            f"Text search request: "
-            f"query='{text_query}', "
-            f"top_k={top_k}, "
-            f"category={category}"
-        )
+        logger.info(f"Text search: query='{text_query}', top_k={top_k}")
 
-        # Perform search (text-only, no image)
+        # Text-only search (alpha=0 means pure text)
         results = search_engine.search(
             image=None,
             text_query=text_query,
             top_k=top_k,
-            filters=filters if filters else None
+            filters=filters if filters else None,
+            alpha=0.0  # Pure text search
         )
 
-        logger.info(f"Text search completed: {len(results)} results found")
+        logger.info(f"Text search completed: {len(results)} results")
 
         return {
             "success": True,
@@ -167,18 +169,34 @@ def get_categories():
 def get_stats(
         pinecone_service: PineconeService = Depends(get_pinecone_service)
 ):
+    """Get statistics from both image and text indexes"""
     try:
-        # Get Pinecone index stats
-        stats = pinecone_service.index.describe_index_stats()
+        # Get stats from both indexes
+        stats = pinecone_service.get_index_stats()
+
+        image_stats = stats['image_index']
+        text_stats = stats['text_index']
 
         return {
             "success": True,
-            "total_vectors": stats.total_vector_count,
-            "dimension": stats.dimension,
-            "namespaces": {
-                ns: {"vector_count": info.vector_count}
-                for ns, info in stats.namespaces.items()
-            } if stats.namespaces else {}
+            "image_index": {
+                "name": Config.PINECONE_IMAGE_INDEX_NAME,
+                "total_vectors": image_stats.total_vector_count,
+                "dimension": image_stats.dimension,
+                "namespaces": {
+                    ns: {"vector_count": info.vector_count}
+                    for ns, info in image_stats.namespaces.items()
+                } if image_stats.namespaces else {}
+            },
+            "text_index": {
+                "name": Config.PINECONE_TEXT_INDEX_NAME,
+                "total_vectors": text_stats.total_vector_count,
+                "dimension": text_stats.dimension,
+                "namespaces": {
+                    ns: {"vector_count": info.vector_count}
+                    for ns, info in text_stats.namespaces.items()
+                } if text_stats.namespaces else {}
+            }
         }
 
     except Exception as e:

@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class APIClient:
-    """Client for FastAPI backend"""
+    """Client for FastAPI backend (Two-Stage Architecture)"""
 
     def __init__(self, base_url: str = StreamlitConfig.API_BASE_URL):
         self.base_url = base_url
@@ -21,7 +21,7 @@ class APIClient:
         Check API health status
 
         Returns:
-            Health status dict
+            Health status dict with both image and text model info
         """
         try:
             response = requests.get(
@@ -39,25 +39,21 @@ class APIClient:
             image: Image.Image,
             text_query: Optional[str] = None,
             top_k: int = 10,
-            image_weight: float = 0.7,
-            text_weight: float = 0.3,
-            use_rerank: bool = True,
+            alpha: float = 0.7,  # Changed: simplified weight parameter
             category: Optional[str] = None
     ) -> Dict:
         """
-        Search by image
+        Search by image with optional text query (two-stage hybrid search)
 
         Args:
             image: PIL Image
-            text_query: Optional text preference
+            text_query: Optional text query for hybrid search
             top_k: Number of results
-            image_weight: Weight for image similarity
-            text_weight: Weight for text similarity
-            use_rerank: Enable text reranking
+            alpha: Image weight (0=text only, 0.5=balanced, 1=image only)
             category: Category filter
 
         Returns:
-            Search results dict
+            Search results dict with image_score, text_score, and sources
         """
         try:
             # Convert PIL Image to bytes
@@ -72,9 +68,7 @@ class APIClient:
 
             data = {
                 'top_k': top_k,
-                'image_weight': image_weight,
-                'text_weight': text_weight,
-                'use_rerank': use_rerank
+                'alpha': alpha  # Changed: single alpha parameter
             }
 
             if text_query:
@@ -108,10 +102,10 @@ class APIClient:
             category: Optional[str] = None
     ) -> Dict:
         """
-        Search by text only
+        Search by text only (using BGE-M3 text index)
 
         Args:
-            text_query: Text query
+            text_query: Text query (natural language)
             top_k: Number of results
             category: Category filter
 
@@ -165,10 +159,10 @@ class APIClient:
 
     def get_stats(self) -> Dict:
         """
-        Get index statistics
+        Get index statistics (both image and text indexes)
 
         Returns:
-            Stats dict
+            Stats dict with image_index and text_index info
         """
         try:
             response = requests.get(
