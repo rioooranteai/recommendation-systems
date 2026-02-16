@@ -33,7 +33,7 @@ def to_1d_list(arr):
 
 
 def build_text_doc(row) -> str:
-    """Build natural language document for BGE-M3"""
+    """Build natural language document for embedding and reranking context."""
     parts = []
 
     product_name = str(row.get('display name', '')).strip()
@@ -72,10 +72,15 @@ def build_index(
     embedding_service = EmbeddingService()
     pinecone_service = PineconeService()
 
+    # Reset index to ensure metadata schema update
+    logger.warning("Deleting old vectors to refresh metadata...")
+    pinecone_service.delete_all()
+    logger.info("Old vectors deleted.")
+
     text_dim = embedding_service.get_embedding_dim()
     image_dim = embedding_service.get_image_embedding_dim()
 
-    logger.info(f"Text dimension: {text_dim}, Image dimension: {image_dim}")
+    logger.info(f"Text dim: {text_dim}, Image dim: {image_dim}")
     logger.info(f"Processing {len(df)} products")
 
     image_vectors_batch = []
@@ -100,18 +105,24 @@ def build_index(
                 error_count += 1
                 continue
 
-            # Encode IMAGE
+            # Extract raw data
+            product_id = str(row['image'].split(".")[0])
+            display_name = str(row.get('display name', '')).strip()
+            category_name = str(row.get('category', 'unknown')).strip()
+            description = str(row.get('description', '')).strip()
+            filename = str(row['image'])
+
+            # 1. Process Image
             img_emb = embedding_service.encode_images(image)
             img_values = to_1d_list(img_emb)
             validate_vector(img_values, image_dim)
 
-            product_id = str(row['image'].split(".")[0])
-
             img_metadata = {
                 'product_id': product_id,
                 'kind': 'img',
-                'category': str(row.get('category', 'unknown')).strip(),
-                'filename': str(row['image'])
+                'category': category_name,
+                'filename': filename,
+                'name': display_name
             }
 
             image_vectors_batch.append((
@@ -120,12 +131,12 @@ def build_index(
                 img_metadata
             ))
 
-            # Encode TEXT
+            # 2. Process Text
             if include_text:
                 text_doc = build_text_doc(row)
 
                 if not text_doc.strip():
-                    logger.warning(f"Empty text for {product_id}, skipping text vector")
+                    logger.warning(f"Empty text for {product_id}, skipping")
                 else:
                     txt_emb = embedding_service.encode_text(text_doc)
                     txt_values = to_1d_list(txt_emb)
@@ -134,7 +145,11 @@ def build_index(
                     txt_metadata = {
                         'product_id': product_id,
                         'kind': 'txt',
-                        'category': str(row.get('category', 'unknown')).strip()
+                        'category': category_name,
+                        'name': display_name,
+                        'image': filename,
+                        'description': description[:200],
+                        'text': text_doc
                     }
 
                     text_vectors_batch.append((
@@ -143,7 +158,7 @@ def build_index(
                         txt_metadata
                     ))
 
-            # Batch Upload
+            # 3. Batch Upload
             if len(image_vectors_batch) >= batch_size:
                 try:
                     pinecone_service.upsert_images(image_vectors_batch)
@@ -187,9 +202,7 @@ def build_index(
             error_count += len(text_vectors_batch)
 
     # Summary
-    logger.info(f"✓ Image vectors: {image_success_count}")
-    logger.info(f"✓ Text vectors: {text_success_count}")
-    logger.info(f"✗ Errors: {error_count}")
+    logger.info(f"Summary: Images={image_success_count}, Text={text_success_count}, Errors={error_count}")
 
     if image_success_count == 0 and text_success_count == 0:
         logger.error("No vectors were successfully indexed!")

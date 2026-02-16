@@ -25,7 +25,6 @@ class Config:
     TEXT_MODEL_NAME = "BAAI/bge-m3"
     MAX_TOKEN_LENGTH = 8192
 
-
     # Pinecone Settings
     PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
     PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT", "us-east-1")
@@ -34,6 +33,8 @@ class Config:
     IMAGE_EMBEDDING_DIM = 768
     PINECONE_TEXT_INDEX_NAME = "fashion-text-1024"
     TEXT_EMBEDDING_DIM = 1024
+    PINECONE_RERANK_MODEL = "pinecone-rerank-v0"
+    RERANK_WINDOW_SIZE = 50
 
     # Processing Settings
     TOP_K = 10

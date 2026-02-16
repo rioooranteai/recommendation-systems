@@ -1,5 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from app import dependencies
@@ -8,6 +9,7 @@ from app.core.search_engine import SearchEngine
 from config import Config
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from services.embedding_service import EmbeddingService
 from services.pinecone_service import PineconeService
 
@@ -20,9 +22,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Application lifespan manager
-    """
+    """Application lifespan manager"""
     # ========== STARTUP ==========
     logger.info("=" * 60)
     logger.info("Starting Semantic Fashion Search API (Two-Stage)")
@@ -43,7 +43,7 @@ async def lifespan(app: FastAPI):
         search_engine = SearchEngine(embedding_service, pinecone_service)
         logger.info("✓ Search Engine ready (two-stage retrieval)")
 
-        # Register services to dependency injection container
+        # Register services
         logger.info("Registering services to dependency container...")
         dependencies.set_services(
             embedding_svc=embedding_service,
@@ -51,7 +51,6 @@ async def lifespan(app: FastAPI):
             search_eng=search_engine
         )
 
-        # Verify registration
         if not dependencies.is_initialized():
             raise RuntimeError("Services registration failed!")
 
@@ -89,40 +88,47 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Semantic Fashion Search API",
-    description="""
-    Two-Stage Multimodal Fashion Search API
-
-    Search for fashion items using:
-    - **Image search**: Upload an image to find visually similar items (SigLIP 768-dim)
-    - **Text search**: Use natural language descriptions (BGE-M3 1024-dim)
-    - **Hybrid search**: Combine image + text with RRF fusion for best results
-
-    Features:
-    - Dual-index architecture (separate image & text indexes)
-    - Visual similarity matching using SigLIP embeddings
-    - Semantic text search using BGE-M3 embeddings
-    - Reciprocal Rank Fusion (RRF) for hybrid results
-    - Category filtering
-    - Adjustable alpha weight (0=text only, 1=image only)
-
-    Models:
-    - Image: google/siglip-so400m-patch14-384 (768-dim)
-    - Text: BAAI/bge-m3 (1024-dim)
-    """,
+    description="Two-Stage Multimodal Fashion Search API",
     version="2.0.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc"
 )
 
+# ✅ CORS - Allow frontend to access backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # In production, specify exact origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# ✅ CRITICAL: Mount static images directory
+IMAGE_DIR = Path(r"D:\recommendation-systems\Semantic Image Fashion Recommender\data\fashion-mini\data")
+
+if IMAGE_DIR.exists():
+    app.mount("/static/images", StaticFiles(directory=str(IMAGE_DIR)), name="images")
+    logger.info("=" * 60)
+    logger.info(f"✅ Static images mounted successfully!")
+    logger.info(f"📁 Image directory: {IMAGE_DIR}")
+    logger.info(f"🌐 URL pattern: http://127.0.0.1:8000/static/images/{{product_id}}.jpg")
+
+    # List some sample files
+    sample_files = list(IMAGE_DIR.glob("*.jpg"))[:5]
+    if sample_files:
+        logger.info(f"📸 Sample images found:")
+        for img in sample_files:
+            logger.info(f"   - {img.name}")
+    logger.info("=" * 60)
+else:
+    logger.error("=" * 60)
+    logger.error(f"❌ IMAGE DIRECTORY NOT FOUND!")
+    logger.error(f"📁 Expected path: {IMAGE_DIR}")
+    logger.error(f"⚠️  Images will not be available!")
+    logger.error("=" * 60)
+
+# Include API routes
 app.include_router(routes.router, prefix='/api', tags=['Search'])
 
 
@@ -140,6 +146,11 @@ def root():
         "indexes": {
             "image": Config.PINECONE_IMAGE_INDEX_NAME,
             "text": Config.PINECONE_TEXT_INDEX_NAME
+        },
+        "static_images": {
+            "enabled": IMAGE_DIR.exists(),
+            "path": str(IMAGE_DIR),
+            "url_pattern": "http://127.0.0.1:8000/static/images/{product_id}.jpg"
         },
         "documentation": {
             "swagger": "/docs",

@@ -1,8 +1,8 @@
 import logging
 from typing import Optional
-from fastapi import HTTPException
 
 from app.core.search_engine import SearchEngine
+from fastapi import HTTPException
 from services.embedding_service import EmbeddingService
 from services.pinecone_service import PineconeService
 

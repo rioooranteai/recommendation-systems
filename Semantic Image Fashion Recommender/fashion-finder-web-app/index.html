@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fashion Empire - AI Search</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/shop.css">
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Searching<span class="loading-dots"></span></div>
+        <p class="loading-subtext">Finding similar products...</p>
+    </div>
+
+    <!-- Header/Navigation -->
+    <header class="header">
+        <nav class="navbar">
+            <div class="nav-left">
+                <a href="#" class="nav-link active">Home</a>
+                <a href="#" class="nav-link">Shop</a>
+                <a href="#" class="nav-link">News</a>
+                <a href="#" class="nav-link">Contact</a>
+            </div>
+
+            <div class="nav-center">
+                <a href="#" class="logo">
+                    <div class="logo-circle">
+                        <svg viewBox="0 0 100 100" width="40" height="40">
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="2"/>
+                            <path d="M 30 50 L 50 30 L 70 50 L 50 70 Z" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <span class="logo-text">VALE MART</span>
+                </a>
+            </div>
+
+            <div class="nav-right">
+                <button class="icon-btn" id="searchToggle">
+                    Search
+                </button>
+                <button class="cart-btn">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span class="cart-count">0</span>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- Page Title -->
+        <div class="page-header">
+            <h1 class="page-title">Products</h1>
+        </div>
+
+        <div class="shop-container">
+
+            <!-- Sidebar Filters -->
+            <aside class="sidebar">
+                <div class="filters-header">
+                    <h3 class="filters-title">
+                        Filters
+                        <span class="filters-count" id="filtersCount">0</span>
+                    </h3>
+                </div>
+
+                <!-- Search Methods -->
+                <div class="filter-section">
+                    <button class="filter-section-header active" data-section="search">
+                        <span>Search Methods</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="filter-section-content show" id="searchSection">
+
+                        <!-- Text Search -->
+                        <div class="search-method">
+                            <label class="search-method-label">
+                                <i class="fas fa-font"></i>
+                                Text Search
+                            </label>
+                            <input
+                                type="text"
+                                class="search-input"
+                                id="textSearch"
+                                placeholder="Describe the product..."
+                            >
+                        </div>
+
+                        <div class="divider-text">or</div>
+
+                        <!-- Image Search -->
+                        <div class="search-method">
+                            <label class="search-method-label">
+                                <i class="fas fa-image"></i>
+                                Image Search
+                            </label>
+                            <input
+                                type="file"
+                                id="imageUpload"
+                                class="file-input"
+                                accept="image/*"
+                            >
+                            <div class="upload-area" id="uploadArea">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Click or drag image here</p>
+                                <small>PNG, JPG, WEBP (Max 10MB)</small>
+                            </div>
+                            <div class="image-preview" id="imagePreview" style="display: none;">
+                                <img id="previewImg" src="" alt="Preview">
+                                <button class="remove-image" id="removeImage">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Hybrid Settings (Hidden by default) -->
+                        <div class="hybrid-settings" id="hybridSettings" style="display: none;">
+                            <div class="settings-header">
+                                <i class="fas fa-sliders-h"></i>
+                                Hybrid Search Settings
+                            </div>
+
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    Image Weight
+                                    <span class="setting-value" id="imageWeightValue">0.7</span>
+                                </label>
+                                <input
+                                    type="range"
+                                    class="slider"
+                                    id="imageWeight"
+                                    min="0"
+                                    max="1"
+                                    step="0.1"
+                                    value="0.7"
+                                >
+                            </div>
+
+                            <div class="setting-item">
+                                <label class="setting-label">
+                                    Text Weight
+                                    <span class="setting-value" id="textWeightValue">0.3</span>
+                                </label>
+                                <input
+                                    type="range"
+                                    class="slider"
+                                    id="textWeight"
+                                    min="0"
+                                    max="1"
+                                    step="0.1"
+                                    value="0.3"
+                                >
+                            </div>
+
+                            <div class="setting-item">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="useRerank" checked>
+                                    <span class="checkbox-custom"></span>
+                                    Enable AI Reranking
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Search Button -->
+                        <button class="search-btn" id="searchBtn">
+                            <i class="fas fa-search"></i>
+                            Search Products
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Category Filter -->
+                <div class="filter-section">
+                    <button class="filter-section-header" data-section="category">
+                        <span>Category</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="filter-section-content" id="categorySection">
+                        <div class="category-pills">
+                            <button class="category-pill active" data-category="">All</button>
+                            <button class="category-pill" data-category="clothing">Clothing</button>
+                            <button class="category-pill" data-category="music">Music</button>
+                            <button class="category-pill" data-category="accessories">Accessories</button>
+                            <button class="category-pill" data-category="collab">Collab</button>
+                            <button class="category-pill" data-category="lifestyle">Lifestyle</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Type -->
+                <div class="filter-section">
+                    <button class="filter-section-header" data-section="type">
+                        <span>Product Type</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="filter-section-content" id="typeSection">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="type" value="tshirt">
+                            <span class="checkbox-custom"></span>
+                            T-Shirt
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="type" value="hoodie">
+                            <span class="checkbox-custom"></span>
+                            Hoodie
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="type" value="cd">
+                            <span class="checkbox-custom"></span>
+                            CD
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="type" value="cassette">
+                            <span class="checkbox-custom"></span>
+                            Cassette
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Pre-Order Filter -->
+                <div class="filter-section">
+                    <button class="filter-section-header" data-section="preorder">
+                        <span>Pre-Order</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="filter-section-content" id="preorderSection">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="preorderOnly">
+                            <span class="checkbox-custom"></span>
+                            Pre-Order Only
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Sale Filter -->
+                <div class="filter-section">
+                    <button class="filter-section-header" data-section="sale">
+                        <span>Sale</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="filter-section-content" id="saleSection">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="saleOnly">
+                            <span class="checkbox-custom"></span>
+                            On Sale Only
+                        </label>
+                    </div>
+                </div>
+
+            </aside>
+
+            <!-- Products Grid -->
+            <section class="products-section">
+
+                <!-- Results Header -->
+                <div class="results-header" id="resultsHeader" style="display: none;">
+                    <div class="results-info">
+                        <h2 class="results-count" id="resultsCount">0 product(s)</h2>
+                        <div class="results-meta">
+                            <span class="meta-badge" id="searchModeBadge">Text Search</span>
+                            <span class="meta-text" id="searchQuery">-</span>
+                        </div>
+                    </div>
+                    <div class="sort-container">
+                        <label class="sort-label">Sort by</label>
+                        <select class="sort-select" id="sortSelect">
+                            <option value="relevance">Relevance</option>
+                            <option value="price-asc">Price: Low to High</option>
+                            <option value="price-desc">Price: High to Low</option>
+                            <option value="newest">Newest</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Products Grid -->
+                <div class="products-grid" id="productsGrid">
+                    <!-- Products will be rendered here -->
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h3 class="empty-title">Start Your Search</h3>
+                    <p class="empty-text">
+                        Use text description or upload an image to find similar products
+                    </p>
+                </div>
+
+                <!-- No Results State -->
+                <div class="no-results" id="noResults" style="display: none;">
+                    <div class="no-results-icon">
+                        <i class="fas fa-box-open"></i>
+                    </div>
+                    <h3 class="no-results-title">No Products Found</h3>
+                    <p class="no-results-text">Try adjusting your search or filters</p>
+                </div>
+
+            </section>
+
+        </div>
+
+    </main>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <i class="toast-icon fas fa-check-circle"></i>
+        <span class="toast-message" id="toastMessage"></span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/filters.js"></script>
+    <script src="js/shop.js"></script>
+
+</body>
+</html>
