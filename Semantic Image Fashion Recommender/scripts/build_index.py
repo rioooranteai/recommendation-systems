@@ -73,9 +73,13 @@ def build_index(
     pinecone_service = PineconeService()
 
     # Reset index to ensure metadata schema update
-    logger.warning("Deleting old vectors to refresh metadata...")
-    pinecone_service.delete_all()
-    logger.info("Old vectors deleted.")
+    logger.warning("Attempting to delete old vectors to refresh metadata...")
+
+    try:
+        pinecone_service.delete_all()
+        logger.info("Old vectors deleted.")
+    except Exception as e:
+        logger.info(f"Skipping deletion (Database is likely empty). Reason: {e}")
 
     text_dim = embedding_service.get_embedding_dim()
     image_dim = embedding_service.get_image_embedding_dim()

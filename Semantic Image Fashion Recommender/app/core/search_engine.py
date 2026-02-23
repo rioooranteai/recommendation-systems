@@ -107,14 +107,44 @@ class SearchEngine:
         txt_vector = self._to_list(txt_embedding)
 
         # Query text index
-        results = self.pinecone_service.query_text(
+        initial_results = self.pinecone_service.query_text(
             vector=txt_vector,
-            top_k=top_k,
+            top_k=100,
             filter=filters,
             namespace=self.namespace
         )
 
-        return results.matches
+        matches = initial_results.matches
+        if not matches:
+            return []
+
+        docs_for_reranker = []
+        for match in matches:
+            docs_for_reranker.append({
+                "id": match.id,
+                "text": match.metadata.get('text', '')
+            })
+
+        try:
+            rerank_response = self.pinecone_service.rerank(
+                query=text_query,
+                documents=docs_for_reranker,
+                top_n=top_k
+            )
+
+            reranked_matches = []
+
+            for item in rerank_response.data:
+                original_match = matches[item.index]
+                original_match.score = item.score
+
+                reranked_matches.append(original_match)
+
+            return reranked_matches
+
+        except Exception as e:
+            logger.error(f"Reranking failed: {e}")
+            return matches[:top_k]
 
     def _fuse_results(
             self,

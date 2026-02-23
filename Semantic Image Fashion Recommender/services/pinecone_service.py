@@ -16,7 +16,6 @@ class PineconeService:
         self.pc = PineconeGRPC(api_key=Config.PINECONE_API_KEY)
 
         # 2. Client for Inference (Rerank) -> Uses Standard REST Client
-        # The Inference API is not yet available via GRPC in the Python SDK
         self.pc_inference = Pinecone(api_key=Config.PINECONE_API_KEY)
 
         # Two indexes for two-stage retrieval strategy
@@ -77,7 +76,7 @@ class PineconeService:
             filter: Optional[Dict] = None,
             namespace: str = Config.PINECONE_NAMESPACE
     ):
-        """Query text index (1024-dim)"""
+
         try:
             result = self.text_index.query(
                 vector=vector,
@@ -92,15 +91,6 @@ class PineconeService:
             raise
 
     def rerank(self, query: str, documents: List[Dict[str, Any]], top_n: int = 10):
-        """
-        Perform Reranking using Pinecone Inference API (Sync).
-
-        Args:
-            query (str): The search query.
-            documents (List[Dict]): List of docs. Must contain 'text' or specific rank_fields.
-                                    Format: [{'id': '1', 'text': 'desc...', 'my_field': '...'}, ...]
-            top_n (int): Number of top results to return.
-        """
         try:
             # Call Pinecone Inference API
             results = self.pc_inference.inference.rerank(

@@ -26,4 +26,4 @@ if torch.cuda.is_available():
     print(f"GPU memory cached: {torch.cuda.memory_reserved(0) / 1e6:.2f} MB")
 
 print("=" * 60)
-print("✅ Test passed!")
+print("Test passed!")
