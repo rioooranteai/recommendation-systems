@@ -92,15 +92,15 @@ class PineconeService:
 
     def rerank(self, query: str, documents: List[Dict[str, Any]], top_n: int = 10):
         try:
-            # Call Pinecone Inference API
             results = self.pc_inference.inference.rerank(
                 model=Config.PINECONE_RERANK_MODEL,
                 query=query,
                 documents=documents,
                 top_n=top_n,
-                return_documents=True,  # Return original docs
+                rank_fields=["text"],
+                return_documents=True,
                 parameters={
-                    "rank_fields": ["text"]  # Field to be evaluated
+                    "truncate": "END"
                 }
             )
             return results
@@ -229,10 +229,7 @@ class PineconeAsyncService:
                     query=query,
                     documents=documents,
                     top_n=top_n,
-                    return_documents=True,
-                    parameters={
-                        "rank_fields": ["text"]
-                    }
+                    return_documents=False
                 )
 
             # Offload to thread pool to avoid blocking the event loop
