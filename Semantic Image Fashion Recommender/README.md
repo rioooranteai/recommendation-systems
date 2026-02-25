@@ -12,6 +12,8 @@
 
 ## What This Project Does
 
+https://github.com/rioooranteai/recommendation-systems/blob/92a35f16a8d72b81e95df25ba8206198078be9a8/Semantic%20Image%20Fashion%20Recommender/assets/main-video.mp4
+
 A production-grade **multimodal search API** that allows users to search a fashion catalogue by:
 
 - 📷 **Image** — upload a product photo, find visually similar items
@@ -295,6 +297,7 @@ Loading SigLIP and BGE-M3 into GPU memory is expensive (~2–4s). The singleton 
 - LinkedIn: [linkedin.com/in/mario-tadung](https://linkedin.com/in/mario-tadung)
 - Email: rantetadungrio@gmail.com
 ```
+
 
 
 
