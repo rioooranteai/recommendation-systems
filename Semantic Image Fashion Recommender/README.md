@@ -12,8 +12,6 @@
 
 ## What This Project Does
 
-## Demo
-
 [![Semantic Fashion Search — Full Demo](https://img.youtube.com/vi/8jNpl1vjvUw/maxresdefault.jpg)](https://www.youtube.com/watch?v=8jNpl1vjvUw)
 
 > 🎬 Click the thumbnail to watch the full demo — Image search, Text search, and Hybrid mode walkthrough.
