@@ -1,11 +1,3 @@
-/**
- * Fashion Empire Shop
- * Main application logic connected to Real Backend
- */
-
-// ============================================
-// CONFIGURATION
-// ============================================
 const USE_MOCK_API = false; // ✅ SET TO FALSE untuk gunakan real backend
 const TOP_K_DEFAULT = 12;
 
@@ -412,10 +404,6 @@ function createProductCard(product) {
             <div class="product-info">
                 <h3 class="product-title">${product.title}</h3>
                 <div class="product-price">$${product.price}</div>
-                <span class="product-match ${matchClass}">
-                    <i class="fas fa-check-circle"></i>
-                    ${scorePercent}% Match
-                </span>
             </div>
         </div>
     `;

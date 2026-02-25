@@ -1,8 +1,3 @@
-/**
- * Filter Management
- * Handles all filter interactions and state
- */
-
 class FilterManager {
     constructor() {
         this.activeFilters = {

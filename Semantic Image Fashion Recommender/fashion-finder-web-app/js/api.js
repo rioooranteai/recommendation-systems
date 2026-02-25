@@ -1,9 +1,3 @@
-/**
- * API Client for Fashion Empire
- * 100% REAL BACKEND - NO MOCK DATA
- * Backend: http://127.0.0.1:8000
- */
-
 class APIClient {
     constructor(baseURL = 'http://127.0.0.1:8000/api') {
         this.baseURL = baseURL;
