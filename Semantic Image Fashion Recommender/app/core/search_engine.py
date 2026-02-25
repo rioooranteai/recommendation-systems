@@ -8,155 +8,215 @@ from config import Config
 
 logger = logging.getLogger(__name__)
 
-# Shared thread pool — created once at module load, reused across all requests
 _executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
-
-# Tuning constants — adjust here to balance latency vs recall
-_RERANK_CANDIDATES = 30   # was 100 — fewer candidates = faster query + rerank
-_RERANK_TOP_N = 50        # final candidates returned after rerank
 
 
 class SearchEngine:
-    def __init__(self, embedding_service, pinecone_service):
+    """Hybrid search engine combining image and text vector retrieval.
+
+    Supports three search modes:
+        - Image-only  : queries the image index (SigLIP, 768-dim).
+        - Text-only   : queries the text index (BGE-M3, 1024-dim) with reranking.
+        - Hybrid      : runs both in parallel, fuses results via RRF.
+    """
+
+    def __init__(self, embedding_service, pinecone_service) -> None:
+        """Initialize SearchEngine with required services.
+
+        Args:
+            embedding_service: Service responsible for encoding images and text.
+            pinecone_service: Service responsible for Pinecone queries and reranking.
+        """
         self.embedding_service = embedding_service
         self.pinecone_service = pinecone_service
         self.namespace = Config.PINECONE_NAMESPACE
 
     def search(
-            self,
-            image: Optional[Image.Image] = None,
-            text_query: Optional[str] = None,
-            top_k: int = 10,
-            filters: Optional[Dict] = None,
-            alpha: float = 0.5  # 0=text only, 1=image only, 0.5=balanced
+        self,
+        image: Optional[Image.Image] = None,
+        text_query: Optional[str] = None,
+        top_k: int = 10,
+        filters: Optional[Dict] = None,
+        alpha: float = 0.5,
     ) -> List[Dict]:
-        """
-        Two-stage hybrid search with parallel execution for hybrid mode.
-        - Image-only : query image index (768-dim SigLIP)
-        - Text-only  : query text index (1024-dim BGE-M3) + rerank
-        - Hybrid     : BOTH run in parallel, then fuse via RRF
-        """
+        """Run a two-stage hybrid search with optional parallel execution.
 
+        Modes:
+            - Image-only : queries image index (SigLIP, 768-dim).
+            - Text-only  : queries text index (BGE-M3, 1024-dim) with reranking.
+            - Hybrid     : both run in parallel, fused via RRF.
+
+        Args:
+            image: Optional PIL image for image-based retrieval.
+            text_query: Optional text string for text-based retrieval.
+            top_k: Number of final results to return.
+            filters: Optional Pinecone metadata filters.
+            alpha: RRF fusion weight. 0 = text only, 1 = image only, 0.5 = balanced.
+
+        Returns:
+            List of result dicts, each containing product_id, score,
+            image_score, text_score, category, filename, and sources.
+
+        Raises:
+            ValueError: If neither image nor text_query is provided.
+        """
         if image is None and text_query is None:
             raise ValueError("Must provide at least one of: image or text_query")
 
         total_start = time.perf_counter()
         image_candidates: List = []
         text_candidates: List = []
+        search_type: str = "Unknown"
 
-        # ------------------------------------------------------------------ #
-        # HYBRID: run both retrievals in parallel                             #
-        # ------------------------------------------------------------------ #
         if image is not None and text_query is not None:
             search_type = "Hybrid"
+            results = self._run_hybrid_search(image, text_query, filters, alpha)
 
-            logger.info("[Parallel] Submitting Image + Text tasks to thread pool...")
-            submit_time = time.perf_counter()
-
-            future_img = _executor.submit(
-                self._timed_image_retrieval, image, 50, filters
-            )
-            future_txt = _executor.submit(
-                self._timed_text_retrieval, text_query, 50, filters
-            )
-
-            image_candidates, img_latency = future_img.result()
-            text_candidates, txt_latency = future_txt.result()
-
-            logger.info(
-                f"[Latency] Image Search (parallel): "
-                f"Retrieved {len(image_candidates)} candidates in {img_latency:.4f}s"
-            )
-            logger.info(
-                f"[Latency] Text Search + Reranker (parallel): "
-                f"Retrieved {len(text_candidates)} candidates in {txt_latency:.4f}s"
-            )
-            logger.info(
-                f"[Parallel] Wall-clock wait: {time.perf_counter() - submit_time:.4f}s "
-                f"(expected ~max({img_latency:.2f}s, {txt_latency:.2f}s))"
-            )
-
-            fusion_start = time.perf_counter()
-            results = self._fuse_results(image_candidates, text_candidates, alpha)
-            logger.info(
-                f"[Latency] RRF Fusion: Completed in "
-                f"{time.perf_counter() - fusion_start:.4f}s"
-            )
-
-        # ------------------------------------------------------------------ #
-        # IMAGE-ONLY                                                          #
-        # ------------------------------------------------------------------ #
         elif image is not None:
             search_type = "Image-only"
             image_candidates, img_latency = self._timed_image_retrieval(
-                image, 50, filters
+                image, Config._RERANK_TOP_N, filters
             )
             logger.info(
-                f"[Latency] Image Search: "
-                f"Retrieved {len(image_candidates)} candidates in {img_latency:.4f}s"
+                "[Latency] Image Search: "
+                "Retrieved %d candidates in %.4fs",
+                len(image_candidates), img_latency,
             )
             results = self._format_results(image_candidates, "image")
 
-        # ------------------------------------------------------------------ #
-        # TEXT-ONLY                                                           #
-        # ------------------------------------------------------------------ #
         else:
             search_type = "Text-only"
             text_candidates, txt_latency = self._timed_text_retrieval(
-                text_query, 50, filters
+                text_query, Config._RERANK_TOP_N, filters
             )
             logger.info(
-                f"[Latency] Text Search + Reranker: "
-                f"Retrieved {len(text_candidates)} candidates in {txt_latency:.4f}s"
+                "[Latency] Text Search + Reranker: "
+                "Retrieved %d candidates in %.4fs",
+                len(text_candidates), txt_latency,
             )
             results = self._format_results(text_candidates, "text")
 
         total_latency = time.perf_counter() - total_start
         logger.info(
-            f"[Latency] TOTAL {search_type} Search: Completed in {total_latency:.4f}s"
+            "[Latency] TOTAL %s Search: Completed in %.4fs",
+            search_type, total_latency,
         )
 
         return results[:top_k]
 
-    # ---------------------------------------------------------------------- #
-    # Timed wrappers                                                          #
-    # ---------------------------------------------------------------------- #
+    def _run_hybrid_search(
+        self,
+        image: Image.Image,
+        text_query: str,
+        filters: Optional[Dict],
+        alpha: float,
+    ) -> List[Dict]:
+        """Execute image and text retrieval in parallel, then fuse via RRF.
+
+        Args:
+            image: PIL image for image-based retrieval.
+            text_query: Text string for text-based retrieval.
+            filters: Optional Pinecone metadata filters.
+            alpha: RRF fusion weight passed to ``_fuse_results``.
+
+        Returns:
+            Fused and sorted list of result dicts.
+        """
+        logger.info("[Parallel] Submitting Image + Text tasks to thread pool...")
+        submit_time = time.perf_counter()
+
+        future_img = _executor.submit(
+            self._timed_image_retrieval, image, Config._RERANK_TOP_N, filters
+        )
+        future_txt = _executor.submit(
+            self._timed_text_retrieval, text_query, Config._RERANK_TOP_N, filters
+        )
+
+        image_candidates, img_latency = future_img.result()
+        text_candidates, txt_latency = future_txt.result()
+
+        logger.info(
+            "[Latency] Image Search (parallel): Retrieved %d candidates in %.4fs",
+            len(image_candidates), img_latency,
+        )
+        logger.info(
+            "[Latency] Text Search + Reranker (parallel): Retrieved %d candidates in %.4fs",
+            len(text_candidates), txt_latency,
+        )
+        logger.info(
+            "[Parallel] Wall-clock wait: %.4fs (expected ~max(%.2fs, %.2fs))",
+            time.perf_counter() - submit_time, img_latency, txt_latency,
+        )
+
+        fusion_start = time.perf_counter()
+        results = self._fuse_results(image_candidates, text_candidates, alpha)
+        logger.info(
+            "[Latency] RRF Fusion: Completed in %.4fs",
+            time.perf_counter() - fusion_start,
+        )
+
+        return results
 
     def _timed_image_retrieval(
-            self,
-            image: Image.Image,
-            top_k: int,
-            filters: Optional[Dict]
+        self,
+        image: Image.Image,
+        top_k: int,
+        filters: Optional[Dict],
     ) -> Tuple[List, float]:
+        """Run image retrieval and return results with elapsed time.
+
+        Args:
+            image: PIL image to encode and query.
+            top_k: Maximum number of candidates to retrieve.
+            filters: Optional Pinecone metadata filters.
+
+        Returns:
+            Tuple of (matches list, elapsed seconds as float).
+        """
         start = time.perf_counter()
         results = self._retrieve_from_image_index(image, top_k, filters)
         elapsed = time.perf_counter() - start
-        logger.info(f"[Thread] Image retrieval done in {elapsed:.4f}s")
+        logger.info("[Thread] Image retrieval done in %.4fs", elapsed)
         return results, elapsed
 
     def _timed_text_retrieval(
-            self,
-            text_query: str,
-            top_k: int,
-            filters: Optional[Dict]
+        self,
+        text_query: str,
+        top_k: int,
+        filters: Optional[Dict],
     ) -> Tuple[List, float]:
+        """Run text retrieval with reranking and return results with elapsed time.
+
+        Args:
+            text_query: Text string to encode and query.
+            top_k: Maximum number of candidates to retrieve.
+            filters: Optional Pinecone metadata filters.
+
+        Returns:
+            Tuple of (reranked matches list, elapsed seconds as float).
+        """
         start = time.perf_counter()
         results = self._retrieve_from_text_index(text_query, top_k, filters)
         elapsed = time.perf_counter() - start
-        logger.info(f"[Thread] Text+Rerank retrieval done in {elapsed:.4f}s")
+        logger.info("[Thread] Text+Rerank retrieval done in %.4fs", elapsed)
         return results, elapsed
 
-    # ---------------------------------------------------------------------- #
-    # Core retrieval methods                                                  #
-    # ---------------------------------------------------------------------- #
-
     def _retrieve_from_image_index(
-            self,
-            image: Image.Image,
-            top_k: int,
-            filters: Optional[Dict] = None
+        self,
+        image: Image.Image,
+        top_k: int,
+        filters: Optional[Dict] = None,
     ) -> List:
-        """Query image index (768-dim SigLIP vectors)."""
+        """Query the image index using SigLIP (768-dim) embeddings.
+
+        Args:
+            image: PIL image to encode.
+            top_k: Maximum number of results to retrieve.
+            filters: Optional Pinecone metadata filters.
+
+        Returns:
+            List of Pinecone match objects.
+        """
         img_embedding = self.embedding_service.encode_images(image)
         img_vector = self._to_list(img_embedding)
 
@@ -164,61 +224,68 @@ class SearchEngine:
             vector=img_vector,
             top_k=top_k,
             filter=filters,
-            namespace=self.namespace
+            namespace=self.namespace,
         )
         return results.matches
 
     def _retrieve_from_text_index(
-            self,
-            text_query: str,
-            top_k: int,
-            filters: Optional[Dict] = None
+        self,
+        text_query: str,
+        top_k: int,
+        filters: Optional[Dict] = None,
     ) -> List:
-        """
-        Query text index (1024-dim BGE-M3) then rerank.
+        """Query the text index (BGE-M3, 1024-dim) and rerank results.
 
-        Latency breakdown from profiling:
-          BGE-M3 encoding : ~0.77s
-          Pinecone query  : ~2.03s  (was top_k=100, now 30 → expect ~0.6s)
-          Pinecone rerank : ~1.84s  (was 100 docs, now 30 → expect ~0.6s)
-        """
+        Profiled latency breakdown:
+            BGE-M3 encoding : ~0.77s
+            Pinecone query  : ~0.60s  (reduced from top_k=100 to _RERANK_CANDIDATES)
+            Pinecone rerank : ~0.60s  (reduced from 100 docs to _RERANK_CANDIDATES)
 
-        # Step 1: BGE-M3 encoding
+        Args:
+            text_query: Text string to encode and query.
+            top_k: Maximum number of results to return after reranking.
+            filters: Optional Pinecone metadata filters.
+
+        Returns:
+            List of reranked Pinecone match objects, or vector-score-sorted
+            matches if reranking fails.
+        """
         t0 = time.perf_counter()
         txt_embedding = self.embedding_service.encode_text(text_query)
         txt_vector = self._to_list(txt_embedding)
-        logger.info(f"[Thread][Text] 1. BGE-M3 encoding:   {time.perf_counter() - t0:.4f}s")
+        logger.info("[Thread][Text] 1. BGE-M3 encoding:   %.4fs", time.perf_counter() - t0)
 
-        # Step 2: Pinecone vector query
-        # Reduced from 100 → _RERANK_CANDIDATES to cut query + rerank payload
         t0 = time.perf_counter()
         initial_results = self.pinecone_service.query_text(
             vector=txt_vector,
-            top_k=_RERANK_CANDIDATES,
+            top_k=Config._RERANK_CANDIDATES,
             filter=filters,
-            namespace=self.namespace
+            namespace=self.namespace,
         )
         matches = initial_results.matches
         logger.info(
-            f"[Thread][Text] 2. Pinecone query:     {time.perf_counter() - t0:.4f}s"
-            f"  ({len(matches)} matches, top_k={_RERANK_CANDIDATES})"
+            "[Thread][Text] 2. Pinecone query:     %.4fs  (%d matches, top_k=%d)",
+            time.perf_counter() - t0, len(matches), Config._RERANK_CANDIDATES,
         )
 
         if not matches:
             return []
 
-        # Step 3: Rerank
         docs_for_reranker = [
             {"text": match.metadata.get("text", "")} for match in matches
         ]
+
         t0 = time.perf_counter()
         try:
             rerank_response = self.pinecone_service.rerank(
                 query=text_query,
                 documents=docs_for_reranker,
-                top_n=min(top_k, len(matches))
+                top_n=min(top_k, len(matches)),
             )
-            logger.info(f"[Thread][Text] 3. Pinecone rerank:   {time.perf_counter() - t0:.4f}s")
+            logger.info(
+                "[Thread][Text] 3. Pinecone rerank:   %.4fs",
+                time.perf_counter() - t0,
+            )
 
             reranked_matches = []
             for item in rerank_response.data:
@@ -229,29 +296,30 @@ class SearchEngine:
             return reranked_matches
 
         except Exception as e:
-            logger.error(f"Reranking failed, falling back to vector scores: {e}")
+            logger.error("Reranking failed, falling back to vector scores: %s", e)
             return matches[:top_k]
 
-    # ---------------------------------------------------------------------- #
-    # Fusion & formatting                                                     #
-    # ---------------------------------------------------------------------- #
-
     def _fuse_results(
-            self,
-            image_candidates: List,
-            text_candidates: List,
-            alpha: float
+        self,
+        image_candidates: List,
+        text_candidates: List,
+        alpha: float,
     ) -> List[Dict]:
-        """
-        Reciprocal Rank Fusion (RRF).
-        alpha: 0 = text only, 1 = image only, 0.5 = balanced.
+        """Fuse image and text candidates using Reciprocal Rank Fusion (RRF).
+
+        Args:
+            image_candidates: Ranked list of Pinecone matches from image retrieval.
+            text_candidates: Ranked list of Pinecone matches from text retrieval.
+            alpha: Image weight. 0 = text only, 1 = image only, 0.5 = balanced.
+
+        Returns:
+            List of fused result dicts sorted by descending RRF score.
         """
         product_scores: Dict[str, Dict] = {}
-        k = 60  # RRF constant
 
         for rank, match in enumerate(image_candidates):
             product_id = match.metadata["product_id"]
-            rrf_score = alpha / (k + rank)
+            rrf_score = alpha / (Config._RRF_K + rank)
 
             if product_id not in product_scores:
                 product_scores[product_id] = {
@@ -261,7 +329,7 @@ class SearchEngine:
                     "text_score": 0.0,
                     "category": match.metadata.get("category", "unknown"),
                     "filename": match.metadata.get("filename", ""),
-                    "sources": []
+                    "sources": [],
                 }
 
             entry = product_scores[product_id]
@@ -271,7 +339,7 @@ class SearchEngine:
 
         for rank, match in enumerate(text_candidates):
             product_id = match.metadata["product_id"]
-            rrf_score = (1 - alpha) / (k + rank)
+            rrf_score = (1 - alpha) / (Config._RRF_K + rank)
 
             if product_id not in product_scores:
                 product_scores[product_id] = {
@@ -281,7 +349,7 @@ class SearchEngine:
                     "text_score": 0.0,
                     "category": match.metadata.get("category", "unknown"),
                     "filename": match.metadata.get("filename", ""),
-                    "sources": []
+                    "sources": [],
                 }
 
             entry = product_scores[product_id]
@@ -292,11 +360,20 @@ class SearchEngine:
         return sorted(
             product_scores.values(),
             key=lambda x: x["score"],
-            reverse=True
+            reverse=True,
         )
 
     def _format_results(self, matches: List, source: str) -> List[Dict]:
-        """Format results from a single index."""
+        """Format raw Pinecone matches from a single index into result dicts.
+
+        Args:
+            matches: List of Pinecone match objects.
+            source: Source label, either ``"image"`` or ``"text"``.
+
+        Returns:
+            List of result dicts with product_id, score, image_score,
+            text_score, category, filename, and sources.
+        """
         return [
             {
                 "product_id": match.metadata["product_id"],
@@ -305,18 +382,24 @@ class SearchEngine:
                 "text_score": match.score if source == "text" else 0.0,
                 "category": match.metadata.get("category", "unknown"),
                 "filename": match.metadata.get("filename", ""),
-                "sources": [source]
+                "sources": [source],
             }
             for match in matches
         ]
 
-    # ---------------------------------------------------------------------- #
-    # Utilities                                                               #
-    # ---------------------------------------------------------------------- #
-
     @staticmethod
     def _to_list(arr) -> List[float]:
-        """Safely convert any array-like to a flat Python list of floats."""
+        """Convert any array-like object to a flat Python list of floats.
+
+        Handles PyTorch tensors (detach + cpu), 2-D numpy arrays (flatten),
+        and any other iterable with a ``.tolist()`` method.
+
+        Args:
+            arr: Array-like object — torch.Tensor, np.ndarray, or similar.
+
+        Returns:
+            Flat list of Python floats.
+        """
         if hasattr(arr, "detach"):
             arr = arr.detach().cpu().numpy()
         if hasattr(arr, "ndim") and arr.ndim == 2:

@@ -48,3 +48,15 @@ class Config:
     # TensorRT Settings
     TENSORRT_PRECISION = "fp16"
     TENSORRT_WORKSPACE = 2 << 30
+
+    # Search Engine Config
+    _RERANK_CANDIDATES: int = 30
+    _RERANK_TOP_N: int = 50
+    _RRF_K: int = 60
+
+    # Dataset
+    DATASET_PATH = "nirmalsankalana/mini-product-image-and-text-dataset"
+
+    # Index
+    _DESCRIPTION_METADATA_LIMIT: int = 200
+    _DESCRIPTION_EMBED_LIMIT: int = 500

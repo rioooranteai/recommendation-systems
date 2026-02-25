@@ -1,6 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import AsyncGenerator
 
 import uvicorn
 from app import dependencies
@@ -15,25 +16,51 @@ from services.pinecone_service import PineconeService
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
+_SEPARATOR = "=" * 60
+
+_IMAGE_DIR = Path(
+    r"D:\recommendation-systems\Semantic Image Fashion Recommender\data\fashion-mini\data"
+)
+
+_API_BASE_URL = "http://127.0.0.1:8000"
+
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan manager"""
-    
-    logger.info("=" * 60)
+async def lifespan(app: FastAPI) -> AsyncGenerator:
+    """Manage application startup and shutdown lifecycle.
+
+    Startup:
+        1. Initializes ``EmbeddingService`` (SigLIP + BGE-M3).
+        2. Initializes ``PineconeService`` (dual gRPC indexes).
+        3. Initializes ``SearchEngine`` (two-stage retrieval).
+        4. Registers all services to the dependency container.
+
+    Shutdown:
+        Calls ``dependencies.cleanup_services()`` to release resources.
+
+    Raises:
+        Exception: Re-raises any initialization error after logging,
+            which prevents the application from starting.
+    """
+    logger.info(_SEPARATOR)
     logger.info("Starting Semantic Fashion Search API (Two-Stage)")
-    logger.info("=" * 60)
+    logger.info(_SEPARATOR)
 
     try:
-        # Initialize services
         logger.info("Step 1/3: Initializing Embedding Service...")
         embedding_service = EmbeddingService()
-        logger.info(f"Image Embedding ready (SigLIP, dim={embedding_service.get_image_embedding_dim()})")
-        logger.info(f"Text Embedding ready (BGE-M3, dim={embedding_service.get_embedding_dim()})")
+        logger.info(
+            "Image Embedding ready (SigLIP, dim=%d)",
+            embedding_service.get_image_embedding_dim(),
+        )
+        logger.info(
+            "Text Embedding ready (BGE-M3, dim=%d)",
+            embedding_service.get_embedding_dim(),
+        )
 
         logger.info("Step 2/3: Initializing Pinecone Service...")
         pinecone_service = PineconeService()
@@ -43,47 +70,45 @@ async def lifespan(app: FastAPI):
         search_engine = SearchEngine(embedding_service, pinecone_service)
         logger.info("Search Engine ready (two-stage retrieval)")
 
-        # Register services
         logger.info("Registering services to dependency container...")
         dependencies.set_services(
             embedding_svc=embedding_service,
             pinecone_svc=pinecone_service,
-            search_eng=search_engine
+            search_eng=search_engine,
         )
 
         if not dependencies.is_initialized():
-            raise RuntimeError("Services registration failed!")
+            raise RuntimeError("Services registration failed.")
 
-        logger.info("=" * 60)
+        logger.info(_SEPARATOR)
         logger.info("Configuration:")
-        logger.info(f"  Image Model: {Config.SIGLIP_MODEL_NAME}")
-        logger.info(f"  Text Model: {Config.TEXT_MODEL_NAME}")
-        logger.info(f"  Device: {Config.DEVICE}")
-        logger.info(f"  Image Dimension: {Config.IMAGE_EMBEDDING_DIM}")
-        logger.info(f"  Text Dimension: {Config.TEXT_EMBEDDING_DIM}")
-        logger.info(f"  Image Index: {Config.PINECONE_IMAGE_INDEX_NAME}")
-        logger.info(f"  Text Index: {Config.PINECONE_TEXT_INDEX_NAME}")
-        logger.info(f"  Namespace: {Config.PINECONE_NAMESPACE}")
-        logger.info("=" * 60)
-        logger.info("ALL SERVICES INITIALIZED SUCCESSFULLY!")
-        logger.info("API IS READY TO ACCEPT REQUESTS")
-        logger.info("=" * 60)
+        logger.info("  Image Model      : %s", Config.SIGLIP_MODEL_NAME)
+        logger.info("  Text Model       : %s", Config.TEXT_MODEL_NAME)
+        logger.info("  Device           : %s", Config.DEVICE)
+        logger.info("  Image Dimension  : %d", Config.IMAGE_EMBEDDING_DIM)
+        logger.info("  Text Dimension   : %d", Config.TEXT_EMBEDDING_DIM)
+        logger.info("  Image Index      : %s", Config.PINECONE_IMAGE_INDEX_NAME)
+        logger.info("  Text Index       : %s", Config.PINECONE_TEXT_INDEX_NAME)
+        logger.info("  Namespace        : %s", Config.PINECONE_NAMESPACE)
+        logger.info(_SEPARATOR)
+        logger.info("All services initialized successfully.")
+        logger.info("API is ready to accept requests.")
+        logger.info(_SEPARATOR)
 
     except Exception as e:
-        logger.error("=" * 60)
-        logger.error("FAILED TO INITIALIZE SERVICES")
-        logger.error(f"Error: {e}")
-        logger.error("=" * 60)
+        logger.error(_SEPARATOR)
+        logger.error("Failed to initialize services.")
+        logger.error("Error: %s", e)
+        logger.error(_SEPARATOR)
         raise
 
     yield
 
-    # ========== SHUTDOWN ==========
-    logger.info("=" * 60)
+    logger.info(_SEPARATOR)
     logger.info("Shutting down services...")
     dependencies.cleanup_services()
-    logger.info("Goodbye!")
-    logger.info("=" * 60)
+    logger.info("Shutdown complete.")
+    logger.info(_SEPARATOR)
 
 
 app = FastAPI(
@@ -92,46 +117,54 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan,
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
-# CORS - Allow frontend to access backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount static images directory
-IMAGE_DIR = Path(r"D:\recommendation-systems\Semantic Image Fashion Recommender\data\fashion-mini\data")
+if _IMAGE_DIR.exists():
+    app.mount(
+        "/static/images",
+        StaticFiles(directory=str(_IMAGE_DIR)),
+        name="images",
+    )
+    logger.info(_SEPARATOR)
+    logger.info("Static images mounted successfully.")
+    logger.info("Image directory : %s", _IMAGE_DIR)
+    logger.info(
+        "URL pattern     : %s/static/images/{product_id}.jpg", _API_BASE_URL
+    )
 
-if IMAGE_DIR.exists():
-    app.mount("/static/images", StaticFiles(directory=str(IMAGE_DIR)), name="images")
-    logger.info("=" * 60)
-    logger.info("Static images mounted successfully!")
-    logger.info(f"Image directory: {IMAGE_DIR}")
-    logger.info(f"URL pattern: http://127.0.0.1:8000/static/images/{{product_id}}.jpg")
-
-    sample_files = list(IMAGE_DIR.glob("*.jpg"))[:5]
+    sample_files = list(_IMAGE_DIR.glob("*.jpg"))[:5]
     if sample_files:
         logger.info("Sample images found:")
         for img in sample_files:
-            logger.info(f"  - {img.name}")
-    logger.info("=" * 60)
+            logger.info("  - %s", img.name)
+
+    logger.info(_SEPARATOR)
 else:
-    logger.error("=" * 60)
-    logger.error("IMAGE DIRECTORY NOT FOUND!")
-    logger.error(f"Expected path: {IMAGE_DIR}")
-    logger.error("Images will not be available!")
-    logger.error("=" * 60)
+    logger.error(_SEPARATOR)
+    logger.error("Image directory not found — static images will be unavailable.")
+    logger.error("Expected path: %s", _IMAGE_DIR)
+    logger.error(_SEPARATOR)
 
-# Include API routes
-app.include_router(routes.router, prefix='/api', tags=['Search'])
+app.include_router(routes.router, prefix="/api", tags=["Search"])
 
-@app.get("/", tags=['Root'])
+
+@app.get("/", tags=["Root"])
 def root():
+    """Return API metadata and available endpoint map.
+
+    Returns:
+        Dict containing version, architecture, model names, index names,
+        static image status, and endpoint paths.
+    """
     return {
         "message": "Semantic Fashion Search API (Two-Stage Architecture)",
         "version": "2.0.0",
@@ -139,33 +172,38 @@ def root():
         "architecture": "two-stage-retrieval",
         "models": {
             "image": Config.SIGLIP_MODEL_NAME,
-            "text": Config.TEXT_MODEL_NAME
+            "text": Config.TEXT_MODEL_NAME,
         },
         "indexes": {
             "image": Config.PINECONE_IMAGE_INDEX_NAME,
-            "text": Config.PINECONE_TEXT_INDEX_NAME
+            "text": Config.PINECONE_TEXT_INDEX_NAME,
         },
         "static_images": {
-            "enabled": IMAGE_DIR.exists(),
-            "path": str(IMAGE_DIR),
-            "url_pattern": "http://127.0.0.1:8000/static/images/{product_id}.jpg"
+            "enabled": _IMAGE_DIR.exists(),
+            "path": str(_IMAGE_DIR),
+            "url_pattern": f"{_API_BASE_URL}/static/images/{{product_id}}.jpg",
         },
         "documentation": {
             "swagger": "/docs",
-            "redoc": "/redoc"
+            "redoc": "/redoc",
         },
         "endpoints": {
             "health": "/api/health",
             "image_search": "/api/search/image",
             "text_search": "/api/search/text",
             "categories": "/api/categories",
-            "stats": "/api/stats"
-        }
+            "stats": "/api/stats",
+        },
     }
 
 
-@app.get("/ping", tags=['Root'])
+@app.get("/ping", tags=["Root"])
 def ping():
+    """Minimal liveness probe — returns immediately with no dependencies.
+
+    Returns:
+        Dict with ``status: "ok"``.
+    """
     return {"status": "ok"}
 
 
@@ -175,5 +213,5 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000,
         reload=True,
-        log_level="info"
+        log_level="info",
     )
