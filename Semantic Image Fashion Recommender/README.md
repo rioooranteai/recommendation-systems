@@ -26,62 +26,65 @@ Results are reranked using Pinecone's inference reranker for higher relevance qu
 
 ```mermaid
 flowchart TB
-    subgraph FE["🖥️ Frontend (Vanilla JS)"]
-        UI["Text Query / Image Upload\nHybrid Slider (α)"]
+    subgraph FE["🖥️ Frontend — Vanilla JS"]
+        UI["📤 Text Query / Image Upload\n⚖️ Hybrid Slider α"]
     end
 
     subgraph API["⚡ FastAPI Backend"]
         R1["POST /api/search/image"]
         R2["POST /api/search/text"]
 
-        subgraph ENC["Encoding Layer"]
-            SIG["SigLIP\n(768-dim)"]
-            BGE["BGE-M3\n(1024-dim)"]
+        subgraph ENC["🔢 Encoding Layer"]
+            SIG["🖼️ SigLIP\n768-dim"]
+            BGE["📝 BGE-M3\n1024-dim"]
         end
 
-        subgraph FUSE["Fusion Layer"]
-            PAR["ThreadPoolExecutor\n(Parallel Retrieval)"]
-            RRF["RRF Fusion\nα · rank_img + (1-α) · rank_txt"]
-            RERANK["Pinecone Reranker\nbge-reranker-v2-m3"]
+        subgraph FUSE["🔀 Fusion Layer"]
+            PAR["⚙️ ThreadPoolExecutor\nParallel Retrieval"]
+            RERANK["🎯 Pinecone Reranker\nbge-reranker-v2-m3"]
+            RRF["➕ RRF Fusion\nα·rank_img + (1-α)·rank_txt"]
         end
     end
 
-    subgraph VDB["🌲 Pinecone Serverless (gRPC)"]
-        IDX1["Image Index\n768-dim · cosine"]
-        IDX2["Text Index\n1024-dim · cosine"]
+    subgraph VDB["🌲 Pinecone Serverless — gRPC"]
+        IDX1["📦 Image Index\n768-dim · cosine"]
+        IDX2["📦 Text Index\n1024-dim · cosine"]
     end
 
-    UI -->|"FormData (HTTP)"| R1
-    UI -->|"FormData (HTTP)"| R2
-
+    UI -->|"FormData"| R1
+    UI -->|"FormData"| R2
     R1 --> SIG
     R1 --> BGE
     R2 --> BGE
-
     SIG --> PAR
     BGE --> RERANK
     RERANK --> PAR
-
-    PAR -->|"query vectors"| IDX1
-    PAR -->|"query vectors"| IDX2
-
+    PAR -->|"query vector"| IDX1
+    PAR -->|"query vector"| IDX2
     IDX1 -->|"top-K matches"| RRF
     IDX2 -->|"top-K matches"| RRF
+    RRF -->|"✅ Ranked Results"| UI
 
-    RRF -->|"ranked results"| UI
+    style FE    fill:#1e3a5f,color:#ffffff,stroke:#4a9eff
+    style API   fill:#2d1b4e,color:#ffffff,stroke:#9b59b6
+    style VDB   fill:#1a3a2a,color:#ffffff,stroke:#2ecc71
 
-    style FE fill:#e3f2fd,stroke:#1565c0
-    style API fill:#f3e5f5,stroke:#6a1b9a
-    style VDB fill:#e8f5e9,stroke:#2e7d32
-    style ENC fill:#fff9c4,stroke:#f9a825
-    style FUSE fill:#fce4ec,stroke:#c62828
-    style SIG fill:#fff3e0,stroke:#e65100
-    style BGE fill:#fff3e0,stroke:#e65100
-    style PAR fill:#fce4ec,stroke:#b71c1c
-    style RRF fill:#fce4ec,stroke:#b71c1c
-    style RERANK fill:#fce4ec,stroke:#b71c1c
-    style IDX1 fill:#c8e6c9,stroke:#1b5e20
-    style IDX2 fill:#c8e6c9,stroke:#1b5e20
+    style ENC   fill:#3d2b00,color:#ffffff,stroke:#f39c12
+    style FUSE  fill:#3b0a0a,color:#ffffff,stroke:#e74c3c
+
+    style UI    fill:#154360,color:#ffffff,stroke:#4a9eff
+    style R1    fill:#6c3483,color:#ffffff,stroke:#9b59b6
+    style R2    fill:#6c3483,color:#ffffff,stroke:#9b59b6
+
+    style SIG   fill:#7d5a00,color:#ffffff,stroke:#f39c12
+    style BGE   fill:#7d5a00,color:#ffffff,stroke:#f39c12
+
+    style PAR   fill:#7b241c,color:#ffffff,stroke:#e74c3c
+    style RERANK fill:#7b241c,color:#ffffff,stroke:#e74c3c
+    style RRF   fill:#7b241c,color:#ffffff,stroke:#e74c3c
+
+    style IDX1  fill:#1d6a3a,color:#ffffff,stroke:#2ecc71
+    style IDX2  fill:#1d6a3a,color:#ffffff,stroke:#2ecc71
 ```
 
 
@@ -279,4 +282,5 @@ Loading SigLIP and BGE-M3 into GPU memory is expensive (~2–4s). The singleton 
 - LinkedIn: [linkedin.com/in/mario-tadung](https://linkedin.com/in/mario-tadung)
 - Email: rantetadungrio@gmail.com
 ```
+
 
