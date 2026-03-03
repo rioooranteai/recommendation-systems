@@ -298,7 +298,7 @@ Loading SigLIP and BGE-M3 into GPU memory is expensive (~2–4s). The singleton 
 - GitHub: [@riooorante](https://github.com/riooorante)
 - LinkedIn: [linkedin.com/in/mario-tadung](https://linkedin.com/in/mario-tadung)
 - Email: rantetadungrio@gmail.com
-```
+
 
 
 
