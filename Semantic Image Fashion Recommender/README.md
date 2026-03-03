@@ -12,6 +12,10 @@
 
 ## What This Project Does
 
+[![Semantic Fashion Search — Full Demo](https://img.youtube.com/vi/8jNpl1vjvUw/maxresdefault.jpg)](https://www.youtube.com/watch?v=8jNpl1vjvUw)
+
+> 🎬 Click the thumbnail to watch the full demo — Image search, Text search, and Hybrid mode walkthrough.
+
 A production-grade **multimodal search API** that allows users to search a fashion catalogue by:
 
 - 📷 **Image** — upload a product photo, find visually similar items
@@ -295,6 +299,8 @@ Loading SigLIP and BGE-M3 into GPU memory is expensive (~2–4s). The singleton 
 - LinkedIn: [linkedin.com/in/mario-tadung](https://linkedin.com/in/mario-tadung)
 - Email: rantetadungrio@gmail.com
 ```
+
+
 
 
 
