@@ -10,6 +10,7 @@ class Config:
     BASE_DIR = Path(__file__).resolve().parent
     MODELS_DIR = BASE_DIR / "models"
     DATA_DIR = BASE_DIR / "data"
+    IMAGE_DIR = DATA_DIR / "fashion-mini/data"
 
     # Model directories
     SIGLIP_PYTORCH_DIR = MODELS_DIR / "siglip_base"

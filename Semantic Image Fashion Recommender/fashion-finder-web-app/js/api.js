@@ -1,236 +1,195 @@
 class APIClient {
     constructor(baseURL = 'http://127.0.0.1:8000/api') {
         this.baseURL = baseURL;
-        this.imageBaseURL = 'http://127.0.0.1:8000/static/images';
+        this.imageBaseURL = `${baseURL}/images`;
     }
 
-    /**
-     * Search by image only
-     * Endpoint: POST /api/search/image
-     */
     async searchByImage(formData) {
-        try {
-            console.log('🔍 Sending image search request to backend...');
+        const response = await fetch(`${this.baseURL}/search/image`, {
+            method: 'POST',
+            body: formData
+        });
 
-            const response = await fetch(`${this.baseURL}/search/image`, {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || `HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log('✅ Raw backend response:', data);
-
-            // ✅ Use REAL backend results
-            return {
-                success: data.success,
-                results: data.results.map(item => this.transformBackendResult(item)),
-                count: data.total_results,
-                search_mode: data.query_type === 'hybrid' ? 'hybrid' : 'image'
-            };
-        } catch (error) {
-            console.error('❌ Search by image error:', error);
-            throw error;
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || `HTTP error! status: ${response.status}`);
         }
+
+        const data = await response.json();
+
+        return {
+            success: data.success,
+            results: data.results.map(item => this.transformBackendResult(item)),
+            count: data.total_results,
+            search_mode: data.query_type === 'hybrid' ? 'hybrid' : 'image'
+        };
     }
 
-    /**
-     * Search by text only
-     * Endpoint: POST /api/search/text
-     */
     async searchByText(params) {
-        try {
-            console.log('🔍 Sending text search request:', params);
+        const formData = new FormData();
+        formData.append('text_query', params.text_query);
+        formData.append('top_k', params.top_k || 12);
 
-            const formData = new FormData();
-            formData.append('text_query', params.text_query);
-            formData.append('top_k', params.top_k || 12);
-
-            if (params.category) {
-                formData.append('category', params.category);
-            }
-
-            const response = await fetch(`${this.baseURL}/search/text`, {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || `HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log('✅ Raw backend response:', data);
-
-            // ✅ Use REAL backend results
-            return {
-                success: data.success,
-                results: data.results.map(item => this.transformBackendResult(item)),
-                count: data.total_results,
-                search_mode: 'text'
-            };
-        } catch (error) {
-            console.error('❌ Search by text error:', error);
-            throw error;
+        if (params.category) {
+            formData.append('category', params.category);
         }
+
+        const response = await fetch(`${this.baseURL}/search/text`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        return {
+            success: data.success,
+            results: data.results.map(item => this.transformBackendResult(item)),
+            count: data.total_results,
+            search_mode: 'text'
+        };
     }
 
-    /**
-     * Hybrid search (image + text)
-     * Endpoint: POST /api/search/image (with text_query)
-     */
     async hybridSearch(formData) {
-        try {
-            console.log('🔍 Sending hybrid search request to backend...');
+        const response = await fetch(`${this.baseURL}/search/image`, {
+            method: 'POST',
+            body: formData
+        });
 
-            const response = await fetch(`${this.baseURL}/search/image`, {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || `HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log('✅ Raw backend response:', data);
-
-            // ✅ Use REAL backend results
-            return {
-                success: data.success,
-                results: data.results.map(item => this.transformBackendResult(item)),
-                count: data.total_results,
-                search_mode: 'hybrid'
-            };
-        } catch (error) {
-            console.error('❌ Hybrid search error:', error);
-            throw error;
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || `HTTP error! status: ${response.status}`);
         }
+
+        const data = await response.json();
+
+        return {
+            success: data.success,
+            results: data.results.map(item => this.transformBackendResult(item)),
+            count: data.total_results,
+            search_mode: 'hybrid'
+        };
     }
 
-    /**
-     * Get categories from backend
-     * Endpoint: GET /api/categories
-     */
     async getCategories() {
-        try {
-            const response = await fetch(`${this.baseURL}/categories`);
+        const response = await fetch(`${this.baseURL}/categories`);
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log('✅ Categories from backend:', data.categories);
-
-            return {
-                categories: data.categories || []
-            };
-        } catch (error) {
-            console.error('❌ Get categories error:', error);
-            throw error;
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+
+        const data = await response.json();
+        return { categories: data.categories || [] };
     }
 
-    /**
-     * Health check
-     * Endpoint: GET /api/health
-     */
     async healthCheck() {
-        try {
-            const response = await fetch(`${this.baseURL}/health`);
+        const response = await fetch(`${this.baseURL}/health`);
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const health = await response.json();
-            console.log('✅ Backend health check:', health);
-            return health;
-        } catch (error) {
-            console.error('❌ Health check failed:', error);
-            throw error;
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+
+        return await response.json();
     }
 
-    /**
-     * ✅ Transform REAL backend result to frontend format
-     * Backend returns: { product_id, category, score }
-     * Frontend needs: { id, title, price, category, type, image_path, isPreorder, onSale, score }
-     */
-    transformBackendResult(item) {
-        console.log('🔄 Transforming backend item:', item);
+    async fetchImageAsBlob(filename) {
+        const response = await fetch(`${this.imageBaseURL}/${filename}`);
+        if (!response.ok) throw new Error(`Failed to fetch image: ${filename}`);
+        return await response.blob();
+    }
 
-        // ✅ Get REAL data from backend
+    async getRecommendations(productId, filename, description, title, category) {
+        const FETCH_K = 6;
+        const textQuery = description || title || category || '';
+        const promises = [];
+        const modes = [];
+
+        if (filename) {
+            try {
+                const blob = await this.fetchImageAsBlob(filename);
+                const imageFile = new File([blob], filename, { type: 'image/jpeg' });
+                const formData = new FormData();
+                formData.append('file', imageFile);
+                formData.append('top_k', FETCH_K);
+                formData.append('alpha', 1.0);
+                promises.push(this.searchByImage(formData));
+                modes.push('image');
+            } catch (e) {
+                console.error('Failed to fetch image for recommendation:', e);
+            }
+        }
+
+        if (textQuery) {
+            promises.push(this.searchByText({ text_query: textQuery, top_k: FETCH_K }));
+            modes.push('text');
+        }
+
+        if (promises.length === 0) return { byImage: [], byText: [] };
+
+        const settled = await Promise.allSettled(promises);
+
+        let byImage = [];
+        let byText = [];
+
+        settled.forEach((result, index) => {
+            if (result.status !== 'fulfilled') {
+                console.error(`Recommendation ${modes[index]} search failed:`, result.reason);
+                return;
+            }
+            const filtered = result.value.results.filter(p => p.id !== productId).slice(0, 5);
+            if (modes[index] === 'image') byImage = filtered;
+            else byText = filtered;
+        });
+
+        return { byImage, byText };
+    }
+
+    transformBackendResult(item) {
         const productId = item.product_id || item.id;
         const category = item.category || 'Unknown';
         const score = item.score || 0;
-
-        // ✅ Extract metadata if backend provides it
         const metadata = item.metadata || {};
 
+        const title = metadata.title
+            || metadata.display_name
+            || item.display_name
+            || this.generateTitle(productId, category);
+
+        const description = metadata.description || item.description || '';
+
         return {
-            // ✅ REAL product ID from backend
             id: productId,
-
-            // ✅ Use metadata or generate from product_id + category
-            title: metadata.title || this.generateTitle(productId, category),
-
-            // ✅ Use metadata price or generate consistent price
+            title: title,
+            description: description,
             price: metadata.price || this.generateConsistentPrice(productId),
-
-            // ✅ REAL category from backend
+            rating: metadata.rating || this.generateConsistentRating(productId),
+            reviewCount: metadata.review_count || this.generateReviewCount(productId),
+            stock: metadata.stock || this.generateStock(productId),
             category: category,
-
-            // ✅ Extract type from category
             type: this.extractType(category),
-
-            // ✅ REAL IMAGE PATH from backend static files
-            image_path: this.getRealImagePath(productId),
-
-            // ✅ Use metadata or default to false
+            image_path: this.getImagePath(item.filename || productId),
             isPreorder: metadata.isPreorder || false,
             onSale: metadata.onSale || false,
-
-            // ✅ REAL similarity score from backend
             score: score
         };
     }
 
-    /**
-     * ✅ Get REAL image path from backend static files
-     * Images are at: D:\recommendation-systems\Semantic Image Fashion Recommender\data\fashion-mini\data
-     * Served via: http://127.0.0.1:8000/static/images/{product_id}.jpg
-     */
-    getRealImagePath(productId) {
-        // ✅ REAL images from backend static server
-        return `${this.imageBaseURL}/${productId}.jpg`;
+    getImagePath(filename) {
+        if (!filename) return null;
+        return `${this.imageBaseURL}/${filename}`;
     }
 
-    /**
-     * Generate title from product_id and category
-     * (Only used if backend doesn't provide metadata.title)
-     */
     generateTitle(productId, category) {
-        // Simple title: just use product_id and category
         return `${category} ${productId}`;
     }
 
-    /**
-     * Extract type from category for filtering
-     */
     extractType(category) {
         if (!category) return 'unknown';
-
         const lower = category.toLowerCase();
-
-        // Map backend categories to frontend types
         if (lower.includes('tshirt') || lower.includes('t-shirt')) return 'tshirt';
         if (lower.includes('shirt')) return 'shirt';
         if (lower.includes('jean') || lower.includes('trouser') || lower.includes('pant')) return 'pants';
@@ -239,24 +198,29 @@ class APIClient {
             lower.includes('wallet') || lower.includes('sunglass') || lower.includes('cap') ||
             lower.includes('backpack')) return 'accessories';
         if (lower.includes('short')) return 'shorts';
-
-        return lower.replace(/s$/, ''); // Remove trailing 's'
+        return lower.replace(/s$/, '');
     }
 
-    /**
-     * Generate consistent price based on product ID
-     * (Only used if backend doesn't provide metadata.price)
-     */
     generateConsistentPrice(productId) {
-        // Use hash of product_id for consistent pricing
         const hash = this.hashCode(productId);
-        const basePrice = 20 + (hash % 80); // $20 - $100
-        return basePrice.toFixed(2);
+        return (20 + (hash % 80)).toFixed(2);
     }
 
-    /**
-     * Hash string to number for consistent values
-     */
+    generateConsistentRating(productId) {
+        const hash = this.hashCode(productId + 'rating');
+        return (3.5 + (hash % 15) / 10).toFixed(1);
+    }
+
+    generateReviewCount(productId) {
+        const hash = this.hashCode(productId + 'reviews');
+        return 10 + (hash % 490);
+    }
+
+    generateStock(productId) {
+        const hash = this.hashCode(productId + 'stock');
+        return 5 + (hash % 95);
+    }
+
     hashCode(str) {
         let hash = 0;
         for (let i = 0; i < str.length; i++) {

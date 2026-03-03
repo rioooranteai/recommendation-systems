@@ -1,4 +1,5 @@
 import logging
+import os
 from io import BytesIO
 from typing import Optional
 
@@ -8,6 +9,7 @@ from app.dependencies import get_pinecone_service, get_search_engine, is_initial
 from app.schemas.models import HealthResponse, SearchResponse, StatsResponse
 from config import Config
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from services.pinecone_service import PineconeService
 
 logger = logging.getLogger(__name__)
@@ -195,6 +197,19 @@ def search_by_text(
         logger.error("Text search failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Search failed: {e}")
 
+
+@router.get("/images/{filename}")
+def get_image(filename:str):
+    if not filename.endswith(".jpg"):
+        filename = f"{filename.strip()}.jpg"
+    image_path = os.path.join(Config.IMAGE_DIR, filename)
+    if not os.path.exists(image_path):
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(
+        path=image_path,
+        media_type="image/jpeg",
+        headers={"Access-Control-Allow-Origin": "*"}
+    )
 
 @router.get("/categories")
 def get_categories():

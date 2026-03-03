@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Detail - Vale Mart</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/product.css">
+</head>
+<body>
+
+    <header class="header">
+        <nav class="navbar">
+            <div class="nav-left">
+                <a href="#" class="nav-link">Home</a>
+                <a href="index.html" class="nav-link active">Shop</a>
+                <a href="#" class="nav-link">News</a>
+                <a href="#" class="nav-link">Contact</a>
+            </div>
+            <div class="nav-center">
+                <a href="#" class="logo">
+                    <div class="logo-circle">
+                        <svg viewBox="0 0 100 100" width="40" height="40">
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="2"/>
+                            <path d="M 30 50 L 50 30 L 70 50 L 50 70 Z" fill="currentColor"/>
+                        </svg>
+                    </div>
+                    <span class="logo-text">VALE MART</span>
+                </a>
+            </div>
+            <div class="nav-right">
+                <button class="cart-btn">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span class="cart-count">0</span>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <main class="main-content">
+
+        <nav class="breadcrumb" id="breadcrumb">
+            <a href="index.html" class="breadcrumb-link">Shop</a>
+            <span class="breadcrumb-sep"><i class="fas fa-chevron-right"></i></span>
+            <span class="breadcrumb-current" id="breadcrumbTitle">Loading...</span>
+        </nav>
+
+        <div class="product-detail-skeleton" id="productSkeleton">
+            <div class="skeleton-image"></div>
+            <div class="skeleton-info">
+                <div class="skeleton-line wide"></div>
+                <div class="skeleton-line medium"></div>
+                <div class="skeleton-line short"></div>
+                <div class="skeleton-line wide"></div>
+                <div class="skeleton-line medium"></div>
+            </div>
+        </div>
+
+        <div class="product-detail" id="productDetail" style="display: none;">
+            <div class="product-gallery">
+                <div class="main-image-container">
+                    <img id="mainImage" src="" alt="" class="main-image">
+                    <div class="image-placeholder" id="imagePlaceholder" style="display: none;">
+                        <i class="fas fa-image"></i>
+                        <span>Image unavailable</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-info-panel">
+
+                <div class="product-meta-top">
+                    <span class="product-category" id="detailCategory"></span>
+                    <div class="product-badges-inline" id="detailBadges"></div>
+                </div>
+
+                <h1 class="product-name" id="detailTitle"></h1>
+
+                <div class="product-rating-row">
+                    <div class="stars" id="detailStars"></div>
+                    <span class="rating-value" id="detailRating"></span>
+                    <span class="review-count" id="detailReviewCount"></span>
+                </div>
+
+                <div class="product-price-row">
+                    <span class="detail-price" id="detailPrice"></span>
+                </div>
+
+                <div class="product-description-section">
+                    <h3 class="section-label">Description</h3>
+                    <p class="product-description" id="detailDescription"></p>
+                </div>
+
+                <div class="product-meta-section">
+                    <div class="meta-row">
+                        <span class="meta-label">Category</span>
+                        <span class="meta-value" id="metaCategory"></span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Type</span>
+                        <span class="meta-value" id="metaType"></span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Stock</span>
+                        <span class="meta-value" id="metaStock"></span>
+                    </div>
+                </div>
+
+                <div class="product-actions">
+                    <button class="btn-add-cart" id="btnAddCart">
+                        <i class="fas fa-shopping-bag"></i>
+                        Add to Cart
+                    </button>
+                    <button class="btn-wishlist" id="btnWishlist">
+                        <i class="far fa-heart"></i>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <section class="recommendations-section" id="recommendationsSection" style="display: none;">
+
+            <div class="rec-block" id="recImageBlock">
+                <div class="rec-header">
+                    <h2 class="rec-title">Visually Similar</h2>
+                    <span class="rec-badge image">Image Match</span>
+                </div>
+                <div class="rec-grid" id="recImageGrid"></div>
+            </div>
+
+            <div class="rec-block" id="recTextBlock">
+                <div class="rec-header">
+                    <h2 class="rec-title">Related Products</h2>
+                    <span class="rec-badge text">Description Match</span>
+                </div>
+                <div class="rec-grid" id="recTextGrid"></div>
+            </div>
+
+        </section>
+
+        <div class="rec-skeleton" id="recSkeleton" style="display: none;">
+            <div class="skeleton-line medium" style="width: 200px; height: 28px; margin-bottom: 1.5rem;"></div>
+            <div class="rec-skeleton-grid">
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <div class="toast" id="toast">
+        <i class="toast-icon fas fa-check-circle"></i>
+        <span class="toast-message" id="toastMessage"></span>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/product.js"></script>
+
+</body>
+</html>
